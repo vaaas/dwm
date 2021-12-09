@@ -19,8 +19,8 @@ static const float mfact     = 0.6; /* factor of master area size [0.05..0.95] *
 
 static const Layout layouts[] = {
 	{ tile },
-	{ monocle },
 	{ bstackhoriz },
+	{ monocle },
 };
 
 /* key definitions */
@@ -35,14 +35,14 @@ static Key keys[] = {
 	/* modifier           key           function        argument */
 	{ MODKEY,             XK_e,         focusstack,     {.i = +1 } },
 	{ MODKEY,             XK_o,         focusstack,     {.i = -1 } },
-	{ MODKEY|ControlMask, XK_e,         cyclelayout,    {.i = -1 } },
-	{ MODKEY|ControlMask, XK_o,         cyclelayout,    {.i = +1 } },
+	{ MODKEY|ControlMask, XK_e,         cyclelayout,    {.i = +1 } },
+	{ MODKEY|ControlMask, XK_o,         cyclelayout,    {.i = -1 } },
 	{ MODKEY,             XK_i,         focusmon,       {.i = -1 } },
 	{ MODKEY,             XK_a,         focusmon,       {.i = +1 } },
 	{ MODKEY|ControlMask, XK_i,         tagmon,         {.i = -1 } },
 	{ MODKEY|ControlMask, XK_a,         tagmon,         {.i = +1 } },
-	{ MODKEY,             XK_y,         setmfact,       {.f = -0.1} },
-	{ MODKEY|ShiftMask,   XK_y,         setmfact,       {.f = +0.1} },
+	{ MODKEY,             XK_y,         setmfact,       {.f = +0.1} },
+	{ MODKEY|ShiftMask,   XK_y,         setmfact,       {.f = -0.1} },
 	{ MODKEY,             XK_Return,    zoom,           {0} },
 	{ MODKEY,             XK_Tab,       view,           {0} },
 	{ MODKEY|ShiftMask,   XK_q,         killclient,     {0} },

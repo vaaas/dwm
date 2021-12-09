@@ -20,7 +20,7 @@
 #define MIN(A, B)	((A) < (B) ? (A) : (B))
 #define CLEANMASK(mask) (mask & ~(numlockmask|LockMask) & (ShiftMask|ControlMask|Mod1Mask|Mod2Mask|Mod3Mask|Mod4Mask|Mod5Mask))
 #define INTERSECT(x,y,w,h,m) (MAX(0, MIN((x)+(w),(m)->wx+(m)->ww) - MAX((x),(m)->wx)) \
-							        * MAX(0, MIN((y)+(h),(m)->wy+(m)->wh) - MAX((y),(m)->wy)))
+                             * MAX(0, MIN((y)+(h),(m)->wy+(m)->wh) - MAX((y),(m)->wy)))
 #define ISVISIBLE(C)	((C->tags & C->mon->tagset[C->mon->seltags]))
 #define LENGTH(X)	(sizeof X / sizeof X[0])
 #define WIDTH(X) ((X)->w + 2 * (X)->bw)
@@ -659,7 +659,7 @@ cyclelayout(const Arg *arg) {
 		if(l != layouts && (l - 1)->arrange)
 			setlayout(&((Arg) { .v = (l - 1) }));
 		else
-			setlayout(&((Arg) { .v = &layouts[LENGTH(layouts) - 2] }));
+			setlayout(&((Arg) { .v = &layouts[LENGTH(layouts) - 1] }));
 	}
 }
 
@@ -1435,7 +1435,6 @@ tagmon(const Arg *arg)
 	if (!selmon->sel || !mons->next)
 		return;
 	sendmon(selmon->sel, dirtomon(arg->i));
-	focusmon(arg);
 }
 
 void
@@ -1842,24 +1841,6 @@ zoom(const Arg *arg)
 	pop(c);
 }
 
-int
-main(int argc, char *argv[])
-{
-	if (argc == 2 && !strcmp("-v", argv[1]))
-		die("dwm-"VERSION);
-	else if (argc != 1)
-		die("usage: dwm [-v]");
-	if (!(dpy = XOpenDisplay(NULL)))
-		die("dwm: cannot open display");
-	checkotherwm();
-	setup();
-	scan();
-	run();
-	cleanup();
-	XCloseDisplay(dpy);
-	return EXIT_SUCCESS;
-}
-
 static void
 bstackhoriz(Monitor *m) {
 	int w, mh, mx, tx, ty, th;
@@ -1888,4 +1869,22 @@ bstackhoriz(Monitor *m) {
 				ty += HEIGHT(c);
 		}
 	}
+}
+
+int
+main(int argc, char *argv[])
+{
+	if (argc == 2 && !strcmp("-v", argv[1]))
+		die("dwm-"VERSION);
+	else if (argc != 1)
+		die("usage: dwm [-v]");
+	if (!(dpy = XOpenDisplay(NULL)))
+		die("dwm: cannot open display");
+	checkotherwm();
+	setup();
+	scan();
+	run();
+	cleanup();
+	XCloseDisplay(dpy);
+	return EXIT_SUCCESS;
 }
