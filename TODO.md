@@ -1,0 +1,11 @@
+- refactor colours
+    - don't use schemes, just use two pointers
+- refactor tags
+    - we don't use workspace names, just numbers
+    - clients should be assumed to always have one tag
+- receive basic configuration from Xresources
+    - see https://dwm.suckless.org/patches/xresources/
+- stop listening to keyboard events
+    - start listening to a unix domain socket
+- port to xcb
+    - see https://github.com/julian-goldsmith/dwm-xcb
