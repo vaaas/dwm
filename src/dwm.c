@@ -59,7 +59,6 @@ ecalloc(size_t nmemb, size_t size)
 
 /* DRW */
 enum { ColFg, ColBg, ColBorder }; /* Clr scheme index */
-typedef XftColor Clr;
 
 typedef struct {
 	unsigned int w, h;
@@ -68,7 +67,7 @@ typedef struct {
 	Window root;
 	Drawable drawable;
 	GC gc;
-	Clr *scheme;
+	XftColor *scheme;
 } Drw;
 
 Drw *
@@ -111,7 +110,7 @@ drw_free(Drw *drw)
 
 
 void
-drw_clr_create(Drw *drw, Clr *dest, const char *clrname)
+drw_clr_create(Drw *drw, XftColor *dest, const char *clrname)
 {
 	if (!drw || !dest || !clrname)
 		return;
@@ -124,11 +123,11 @@ drw_clr_create(Drw *drw, Clr *dest, const char *clrname)
 
 /* Wrapper to create color schemes. The caller has to call free(3) on the
  * returned color scheme when done using it. */
-Clr *
+XftColor *
 drw_scm_create(Drw *drw, const char *clrnames[], size_t clrcount)
 {
 	size_t i;
-	Clr *ret;
+	XftColor *ret;
 
 	/* need at least two colors for a scheme */
 	if (!drw || !clrnames || clrcount < 2 || !(ret = ecalloc(clrcount, sizeof(XftColor))))
@@ -140,7 +139,7 @@ drw_scm_create(Drw *drw, const char *clrnames[], size_t clrcount)
 }
 
 void
-drw_setscheme(Drw *drw, Clr *scm)
+drw_setscheme(Drw *drw, XftColor *scm)
 {
 	if (drw)
 		drw->scheme = scm;
@@ -329,7 +328,7 @@ static void (*handler[LASTEvent]) (XEvent *) = {
 };
 static Atom wmatom[WMLast], netatom[NetLast];
 static int running = 1;
-static Clr **scheme;
+static XftColor **scheme;
 static Display *dpy;
 static Drw *drw;
 static Monitor *mons, *selmon;
@@ -1337,7 +1336,7 @@ setup(void)
 	netatom[NetWMWindowTypeDialog] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DIALOG", False);
 	netatom[NetClientList] = XInternAtom(dpy, "_NET_CLIENT_LIST", False);
 	/* init appearance */
-	scheme = ecalloc(LENGTH(colors), sizeof(Clr *));
+	scheme = ecalloc(LENGTH(colors), sizeof(XftColor *));
 	for (i = 0; i < LENGTH(colors); i++)
 		scheme[i] = drw_scm_create(drw, colors[i], 3);
 	/* supporting window for NetWMCheck */
