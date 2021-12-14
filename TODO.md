@@ -1,8 +1,8 @@
 - refactor colours
     - don't use schemes, just use two pointers
 - refactor tags
-    - we don't use workspace names, just numbers
-    - clients should be assumed to always have one tag
+    - we don't use workspace names, just numbers DONE
+    - clients should be assumed to always have one tag WIP
 - receive basic configuration from Xresources
     - see https://dwm.suckless.org/patches/xresources/
 - stop listening to keyboard events
