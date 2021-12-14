@@ -28,6 +28,11 @@
 #define TAGMASK ((1 << LENGTH(tags)) - 1)
 
 /* util */
+float clamp(float x, float min, float max)
+{	if (x < min) return min;
+	else if (x > max) return max;
+	else return x; }
+
 void
 die(const char *fmt, ...)
 {
@@ -1288,18 +1293,12 @@ setlayout(const Arg *arg)
 		arrange(selmon);
 }
 
-/* arg > 1.0 will set mfact absolutely */
 void
 setmfact(const Arg *arg)
 {
-	float f;
-
 	if (!arg || !selmon->lt[selmon->sellt]->arrange)
 		return;
-	f = arg->f < 1.0 ? arg->f + selmon->mfact : arg->f - 1.0;
-	if (f < 0.1 || f > 0.9)
-		return;
-	selmon->mfact = f;
+	selmon->mfact = clamp(arg->f + selmon->mfact, 0.1, 0.9);
 	arrange(selmon);
 }
 
