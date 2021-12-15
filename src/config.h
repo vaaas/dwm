@@ -1,28 +1,14 @@
-/* appearance */
 static const unsigned int borderpx  = 4;        /* border pixel of windows */
-static const char col_gray1[]       = "#000000";
-static const char col_gray2[]       = "#444444";
-static const char col_gray3[]       = "#bbbbbb";
-static const char col_gray4[]       = "#eeeeee";
-static const char col_cyan[]        = "#00aaff";
-static const char *colors[][3]      = {
-	/*               fg         bg         border   */
-	[SchemeNorm] = { col_gray3, col_gray1, col_gray2 },
-	[SchemeSel]  = { col_gray4, col_cyan,  col_cyan  },
-};
-
-#define workspaces 4
-
-/* layout(s) */
-static const float mfact     = 0.6; /* factor of master area size [0.05..0.95] */
-
+static const unsigned long col_sel = 0x00AAFF;
+static const unsigned long col_norm = 0x000000;
+static const unsigned char workspaces = 4;
+static const float mfact = 0.6; /* factor of master area size [0.05..0.95] */
 static const Layout layouts[] = {
 	{ tile },
 	{ bstackhoriz },
 	{ monocle },
 };
 
-/* key definitions */
 #define MODKEY Mod4Mask
 #define TAGKEYS(KEY,TAG) \
 	{ MODKEY,                       KEY,      view,           {.ui = 1 << TAG} }, \

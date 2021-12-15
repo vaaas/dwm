@@ -1,12 +1,12 @@
 #include <errno.h>
 #include <signal.h>
-#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <stdbool.h>
 #include <X11/keysym.h>
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
@@ -15,9 +15,9 @@
 #include <X11/extensions/Xinerama.h>
 #include <X11/Xft/Xft.h>
 
-/* macros */
 #define MAX(A, B) ((A) > (B) ? (A) : (B))
 #define MIN(A, B) ((A) < (B) ? (A) : (B))
+#define CLAMP(X, LO, HI) (MIN(HI, MAX(LO, X)))
 #define CLEANMASK(mask) (mask & ~(numlockmask|LockMask) & (ShiftMask|ControlMask|Mod1Mask|Mod2Mask|Mod3Mask|Mod4Mask|Mod5Mask))
 #define INTERSECT(x,y,w,h,m) (MAX(0, MIN((x)+(w),(m)->wx+(m)->ww) - MAX((x),(m)->wx)) \
                              * MAX(0, MIN((y)+(h),(m)->wy+(m)->wh) - MAX((y),(m)->wy)))
@@ -26,44 +26,22 @@
 #define WIDTH(X) ((X)->w + 2 * (X)->bw)
 #define HEIGHT(X) ((X)->h + 2 * (X)->bw)
 #define TAGMASK ((1 << workspaces) - 1)
+#define LAST(X) (X[strlen(X)-1])
 
-/* util */
-float clamp(float x, float min, float max)
-{	if (x < min) return min;
-	else if (x > max) return max;
-	else return x; }
-
-void
-die(const char *fmt, ...)
-{
-	va_list ap;
-
-	va_start(ap, fmt);
-	vfprintf(stderr, fmt, ap);
-	va_end(ap);
-
-	if (fmt[0] && fmt[strlen(fmt)-1] == ':') {
-		fputc(' ', stderr);
-		perror(NULL);
-	} else {
+void die(const char *msg)
+{	fputs(msg, stderr);
+	if (msg[0] && LAST(msg) == ':')
+		{ fputc(' ', stderr);
+		perror(NULL); }
+	else
 		fputc('\n', stderr);
-	}
-
-	exit(1);
-}
+	exit(1); }
 
 void *
-ecalloc(size_t nmemb, size_t size)
-{
-	void *p;
-
-	if (!(p = calloc(nmemb, size)))
-		die("calloc:");
-	return p;
-}
-
-/* DRW */
-enum { ColFg, ColBg, ColBorder }; /* Clr scheme index */
+ecalloc(size_t length, size_t size)
+{	void *p = calloc(length, size);
+	if (!p) die("calloc:");
+	return p; }
 
 typedef struct {
 	unsigned int w, h;
@@ -72,7 +50,6 @@ typedef struct {
 	Window root;
 	Drawable drawable;
 	GC gc;
-	XftColor *scheme;
 } Drw;
 
 Drw *
@@ -113,42 +90,6 @@ drw_free(Drw *drw)
 	free(drw);
 }
 
-
-void
-drw_clr_create(Drw *drw, XftColor *dest, const char *clrname)
-{
-	if (!drw || !dest || !clrname)
-		return;
-
-	if (!XftColorAllocName(drw->dpy, DefaultVisual(drw->dpy, drw->screen),
-						   DefaultColormap(drw->dpy, drw->screen),
-						   clrname, dest))
-		die("error, cannot allocate color '%s'", clrname);
-}
-
-/* Wrapper to create color schemes. The caller has to call free(3) on the
- * returned color scheme when done using it. */
-XftColor *
-drw_scm_create(Drw *drw, const char *clrnames[], size_t clrcount)
-{
-	size_t i;
-	XftColor *ret;
-
-	/* need at least two colors for a scheme */
-	if (!drw || !clrnames || clrcount < 2 || !(ret = ecalloc(clrcount, sizeof(XftColor))))
-		return NULL;
-
-	for (i = 0; i < clrcount; i++)
-		drw_clr_create(drw, &ret[i], clrnames[i]);
-	return ret;
-}
-
-void
-drw_setscheme(Drw *drw, XftColor *scm)
-{
-	if (drw)
-		drw->scheme = scm;
-}
 
 void
 drw_map(Drw *drw, Window win, int x, int y, unsigned int w, unsigned int h)
@@ -330,8 +271,7 @@ static void (*handler[LASTEvent]) (XEvent *) = {
 	[UnmapNotify] = unmapnotify
 };
 static Atom wmatom[WMLast], netatom[NetLast];
-static int running = 1;
-static XftColor **scheme;
+static bool running = true;
 static Display *dpy;
 static Drw *drw;
 static Monitor *mons, *selmon;
@@ -339,9 +279,6 @@ static Window root, wmcheckwin;
 
 /* configuration, allows nested code to access above variables */
 #include "config.h"
-
-/* compile-time check if all tags fit into an unsigned int bit array. */
-struct NumTags { char limitexceeded[workspaces > 31 ? -1 : 1]; };
 
 /* function implementations */
 void
@@ -470,7 +407,6 @@ cleanup(void)
 	Arg a = {.ui = ~0};
 	Layout foo = { NULL };
 	Monitor *m;
-	size_t i;
 
 	view(&a);
 	selmon->lt[selmon->sellt] = &foo;
@@ -480,8 +416,6 @@ cleanup(void)
 	XUngrabKey(dpy, AnyKey, AnyModifier, root);
 	while (mons)
 		cleanupmon(mons);
-	for (i = 0; i < LENGTH(colors); i++)
-		free(scheme[i]);
 	XDestroyWindow(dpy, wmcheckwin);
 	drw_free(drw);
 	XSync(dpy, False);
@@ -733,7 +667,7 @@ focus(Client *c)
 			seturgent(c, 0);
 		detachstack(c);
 		attachstack(c);
-		XSetWindowBorder(dpy, c->win, scheme[SchemeSel][ColBorder].pixel);
+		XSetWindowBorder(dpy, c->win, col_sel);
 		setfocus(c);
 	} else {
 		XSetInputFocus(dpy, root, RevertToPointerRoot, CurrentTime);
@@ -960,7 +894,7 @@ manage(Window w, XWindowAttributes *wa)
 
 	wc.border_width = c->bw;
 	XConfigureWindow(dpy, w, CWBorderWidth, &wc);
-	XSetWindowBorder(dpy, w, scheme[SchemeNorm][ColBorder].pixel);
+	XSetWindowBorder(dpy, w, col_norm);
 	configure(c); /* propagates border_width, if size doesn't change */
 	updatewindowtype(c);
 	updatesizehints(c);
@@ -1086,11 +1020,7 @@ propertynotify(XEvent *e)
 	}
 }
 
-void
-quit(const Arg *arg)
-{
-	running = 0;
-}
+void quit(const Arg *arg) { running = false; }
 
 Monitor *
 recttomon(int x, int y, int w, int h)
@@ -1296,14 +1226,13 @@ setmfact(const Arg *arg)
 {
 	if (!arg || !selmon->lt[selmon->sellt]->arrange)
 		return;
-	selmon->mfact = clamp(arg->f + selmon->mfact, 0.1, 0.9);
+	selmon->mfact = CLAMP(arg->f + selmon->mfact, 0.1, 0.9);
 	arrange(selmon);
 }
 
 void
 setup(void)
 {
-	int i;
 	XSetWindowAttributes wa;
 	Atom utf8string;
 
@@ -1332,10 +1261,6 @@ setup(void)
 	netatom[NetWMWindowType] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
 	netatom[NetWMWindowTypeDialog] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DIALOG", False);
 	netatom[NetClientList] = XInternAtom(dpy, "_NET_CLIENT_LIST", False);
-	/* init appearance */
-	scheme = ecalloc(LENGTH(colors), sizeof(XftColor *));
-	for (i = 0; i < LENGTH(colors); i++)
-		scheme[i] = drw_scm_create(drw, colors[i], 3);
 	/* supporting window for NetWMCheck */
 	wmcheckwin = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 0, 0, 0);
 	XChangeProperty(dpy, wmcheckwin, netatom[NetWMCheck], XA_WINDOW, 32,
@@ -1461,7 +1386,7 @@ unfocus(Client *c, int setfocus)
 {
 	if (!c)
 		return;
-	XSetWindowBorder(dpy, c->win, scheme[SchemeNorm][ColBorder].pixel);
+	XSetWindowBorder(dpy, c->win, col_norm);
 	if (setfocus) {
 		XSetInputFocus(dpy, root, RevertToPointerRoot, CurrentTime);
 		XDeleteProperty(dpy, root, netatom[NetActiveWindow]);

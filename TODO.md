@@ -1,5 +1,5 @@
-- refactor colours
-    - don't use schemes, just use two pointers
+- refactor colours [DONE]
+    - don't use schemes, just use two pointers [WONTFIX] ended up using unsigned longs instead
 - refactor tags
     - we don't use workspace names, just numbers DONE
     - clients should be assumed to always have one tag WIP
@@ -9,3 +9,4 @@
     - start listening to a unix domain socket
 - port to xcb
     - see https://github.com/julian-goldsmith/dwm-xcb
+- fix XKeycodeToKeysym deprecation
