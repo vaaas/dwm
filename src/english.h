@@ -6,3 +6,4 @@
 #define do {
 #define then {
 #define end }
+#define not !
