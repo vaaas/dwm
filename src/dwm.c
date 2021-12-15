@@ -102,7 +102,6 @@ drw_map(Drw *drw, Window win, int x, int y, unsigned int w, unsigned int h)
 }
 
 /* enums */
-enum { SchemeNorm, SchemeSel }; /* color schemes */
 enum { NetSupported, NetWMName, NetWMState, NetWMCheck,
 	   NetWMFullscreen, NetActiveWindow, NetWMWindowType,
 	   NetWMWindowTypeDialog, NetClientList, NetLast }; /* EWMH atoms */
@@ -813,7 +812,6 @@ grabkeys(void)
 	}
 }
 
-#ifdef XINERAMA
 static int
 isuniquegeom(XineramaScreenInfo *unique, size_t n, XineramaScreenInfo *info)
 {
@@ -823,7 +821,6 @@ isuniquegeom(XineramaScreenInfo *unique, size_t n, XineramaScreenInfo *info)
 			return 0;
 	return 1;
 }
-#endif /* XINERAMA */
 
 void
 keypress(XEvent *e)
@@ -1450,7 +1447,6 @@ updategeom(void)
 {
 	int dirty = 0;
 
-#ifdef XINERAMA
 	if (XineramaIsActive(dpy)) {
 		int i, j, n, nn;
 		Client *c;
@@ -1503,9 +1499,7 @@ updategeom(void)
 			}
 		}
 		free(unique);
-	} else
-#endif /* XINERAMA */
-	{ /* default monitor setup */
+	} else {
 		if (!mons)
 			mons = createmon();
 		if (mons->mw != sw || mons->mh != sh) {
