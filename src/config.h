@@ -3,6 +3,7 @@ static const unsigned long col_sel = 0x00AAFF;
 static const unsigned long col_norm = 0x000000;
 static const unsigned char workspaces = 4;
 static const float mfact = 0.6; /* factor of master area size [0.05..0.95] */
+static const int bh = 0; // bar height
 static const Layout layouts[] = {
 	{ tile },
 	{ bstackhoriz },

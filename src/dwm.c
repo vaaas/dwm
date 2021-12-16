@@ -17,7 +17,6 @@
 
 #define MAX(A, B) ((A) > (B) ? (A) : (B))
 #define MIN(A, B) ((A) < (B) ? (A) : (B))
-#define CLAMP(X, LO, HI) (MIN(HI, MAX(LO, X)))
 #define CLEANMASK(mask) (mask & ~(numlockmask|LockMask) & (ShiftMask|ControlMask|Mod1Mask|Mod2Mask|Mod3Mask|Mod4Mask|Mod5Mask))
 #define INTERSECT(x,y,w,h,m) (MAX(0, MIN((x)+(w),(m)->wx+(m)->ww) - MAX((x),(m)->wx)) \
 							 * MAX(0, MIN((y)+(h),(m)->wy+(m)->wh) - MAX((y),(m)->wy)))
@@ -28,6 +27,8 @@
 #define TAGMASK ((1 << workspaces) - 1)
 #define LAST(X) (X[strlen(X)-1])
 #define FOREACH(X, XS) for (X = XS; X; X = X->next)
+#define FOREACHTILE(C, M) for (C = nexttiled(M->clients); C; C = nexttiled(C->next))
+#define FIND(X, COND) while(X) { if (COND) break; else X = X->next; }
 
 void die(const char *msg) {
 	fputs(msg, stderr);
@@ -124,7 +125,6 @@ typedef union {
 typedef struct Monitor Monitor;
 typedef struct Client Client;
 struct Client {
-	char name[256];
 	float mina, maxa;
 	int x, y, w, h;
 	int oldx, oldy, oldw, oldh;
@@ -152,9 +152,9 @@ typedef struct {
 struct Monitor {
 	float mfact;
 	int num;
-	int by;			   /* bar geometry */
-	int mx, my, mw, mh;   /* screen size */
-	int wx, wy, ww, wh;   /* window area  */
+	int by; /* bar geometry */
+	int mx, my, mw, mh; /* screen size */
+	int wx, wy, ww, wh; /* window area  */
 	unsigned int seltags;
 	unsigned int sellt;
 	unsigned int tagset[2];
@@ -165,15 +165,6 @@ struct Monitor {
 	Window barwin;
 	const Layout *lt[2];
 };
-
-typedef struct {
-	const char *class;
-	const char *instance;
-	const char *title;
-	unsigned int tags;
-	int isfloating;
-	int monitor;
-} Rule;
 
 /* function declarations */
 static void applyrules(Client *c);
@@ -202,7 +193,6 @@ static void focusmon(const Arg *arg);
 static void focusstack(const Arg *arg);
 static int getrootptr(int *x, int *y);
 static long getstate(Window w);
-static int gettextprop(Window w, Atom atom, char *text, unsigned int size);
 static void grabkeys(void);
 static void keypress(XEvent *e);
 static void killclient(const Arg *arg);
@@ -243,7 +233,6 @@ static void updateclientlist(void);
 static int updategeom(void);
 static void updatenumlockmask(void);
 static void updatesizehints(Client *c);
-static void updatetitle(Client *c);
 static void updatewindowtype(Client *c);
 static void updatewmhints(Client *c);
 static void view(const Arg *arg);
@@ -254,12 +243,11 @@ static int xerrordummy(Display *dpy, XErrorEvent *ee);
 static int xerrorstart(Display *dpy, XErrorEvent *ee);
 static void zoom(const Arg *arg);
 static void bstackhoriz(Monitor *m);
+static float clamp(float x, float l, float h);
+static unsigned int tile_count(Monitor *m);
 
-/* variables */
-static const char broken[] = "broken";
 static int screen;
-static int sw, sh;		   /* X display screen geometry width, height */
-static int bh; /* bar geometry */
+static int sw, sh;			/* X display screen geometry width, height */
 static int (*xerrorxlib)(Display *, XErrorEvent *);
 static unsigned int numlockmask = 0;
 static void (*handler[LASTEvent]) (XEvent *) = {
@@ -285,8 +273,18 @@ static Window root, wmcheckwin;
 
 #include "config.h"
 
-void applyrules(Client *c)
-{
+float clamp(float x, float l, float h) {
+	return x < l ? l : x > h ? h : x;
+}
+
+unsigned int tile_count(Monitor *m) {
+	 unsigned int n = 0;
+	 Client *c;
+	 FOREACHTILE(c, m) n++;
+	 return n;
+}
+
+void applyrules(Client *c) {
 	c->isfloating = 0;
 	c->tags = 0;
 	c->tags = c->tags & TAGMASK ? c->tags & TAGMASK : c->mon->tagset[c->mon->seltags];
@@ -719,29 +717,6 @@ long getstate(Window w) {
 	return result;
 }
 
-int gettextprop(Window w, Atom atom, char *text, unsigned int size) {
-	char **list = NULL;
-	int n;
-	XTextProperty name;
-
-	if (!text || size == 0)
-		return 0;
-	text[0] = '\0';
-	if (!XGetTextProperty(dpy, w, &name, atom) || !name.nitems)
-		return 0;
-	if (name.encoding == XA_STRING)
-		strncpy(text, (char *)name.value, size - 1);
-	else {
-		if (XmbTextPropertyToTextList(dpy, &name, &list, &n) >= Success && n > 0 && *list) {
-			strncpy(text, *list, size - 1);
-			XFreeStringList(list);
-		}
-	}
-	text[size - 1] = '\0';
-	XFree(name.value);
-	return 1;
-}
-
 void grabkeys(void) {
 	updatenumlockmask();
 	{
@@ -805,7 +780,6 @@ void manage(Window w, XWindowAttributes *wa) {
 	c->h = c->oldh = wa->height;
 	c->oldbw = wa->border_width;
 
-	updatetitle(c);
 	if (XGetTransientForHint(dpy, w, &trans) && (t = wintoclient(trans))) {
 		c->mon = t->mon;
 		c->tags = t->tags;
@@ -870,13 +844,8 @@ void maprequest(XEvent *e) {
 }
 
 void monocle(Monitor *m) {
-	unsigned int n = 0;
 	Client *c;
-
-	FOREACH(c, m->clients)
-		if (ISVISIBLE(c))
-			n++;
-	for (c = nexttiled(m->clients); c; c = nexttiled(c->next))
+	 FOREACHTILE(c, m)
 		resize(c, m->wx, m->wy, m->ww - 2 * c->bw, m->wh - 2 * c->bw, 0);
 }
 
@@ -895,9 +864,9 @@ void motionnotify(XEvent *e) {
 	mon = m;
 }
 
-Client * nexttiled(Client *c) {
-	for (; c && (c->isfloating || !ISVISIBLE(c)); c = c->next);
-	return c;
+Client *nexttiled(Client *c) {
+	 FIND(c, !c->isfloating || ISVISIBLE(c));
+	 return c;
 }
 
 void pop(Client *c) {
@@ -927,9 +896,6 @@ void propertynotify(XEvent *e) {
 		case XA_WM_HINTS:
 			updatewmhints(c);
 			break;
-		}
-		if (ev->atom == XA_WM_NAME || ev->atom == netatom[NetWMName]) {
-			updatetitle(c);
 		}
 		if (ev->atom == netatom[NetWMWindowType])
 			updatewindowtype(c);
@@ -1114,7 +1080,7 @@ void setlayout(const Arg *arg) {
 void setmfact(const Arg *arg) {
 	if (!arg || !selmon->lt[selmon->sellt]->arrange)
 		return;
-	selmon->mfact = CLAMP(arg->f + selmon->mfact, 0.1, 0.9);
+	selmon->mfact = clamp(arg->f + selmon->mfact, 0.1, 0.9);
 	arrange(selmon);
 }
 
@@ -1217,17 +1183,18 @@ void tagmon(const Arg *arg) {
 }
 
 void tile(Monitor *m) {
-	unsigned int i, n, h, mw, my, ty;
+	unsigned int i, h, mw, my, ty;
 	Client *c;
 
-	for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++);
-	if (n == 0)
-		return;
-
-	if (n > 1)
-		mw = m->ww * m->mfact;
-	else
-		mw = m->ww;
+	unsigned int n = tile_count(m);
+	switch(n) {
+		case 0: return;
+		case 1:
+			monocle(m);
+			return;
+		default:
+			mw = m->ww * m->mfact;
+	}
 	for (i = my = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++)
 		if (i < 1) {
 			h = (m->wh - my) / (MIN(n, 1) - i);
@@ -1429,13 +1396,6 @@ void updatesizehints(Client *c) {
 	c->isfixed = (c->maxw && c->maxh && c->maxw == c->minw && c->maxh == c->minh);
 }
 
-void updatetitle(Client *c) {
-	if (!gettextprop(c->win, netatom[NetWMName], c->name, sizeof c->name))
-		gettextprop(c->win, XA_WM_NAME, c->name, sizeof c->name);
-	if (c->name[0] == '\0') /* hack to mark broken clients */
-		strcpy(c->name, broken);
-}
-
 void updatewindowtype(Client *c) {
 	Atom state = getatomprop(c, netatom[NetWMState]);
 	Atom wtype = getatomprop(c, netatom[NetWMWindowType]);
@@ -1544,19 +1504,19 @@ void zoom(const Arg *arg) {
 
 static void bstackhoriz(Monitor *m) {
 	int w, mh, mx, tx, ty, th;
-	unsigned int i, n;
+	unsigned int i;
 	Client *c;
+	unsigned int n = tile_count(m);
 
-	for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++);
-	if (n == 0)
-		return;
-	if (n > 1) {
-		mh = m->mfact * m->wh;
-		th = (m->wh - mh) / (n - 1);
-		ty = m->wy + mh;
-	} else {
-		th = mh = m->wh;
-		ty = m->wy;
+	switch(n) {
+		case 0: return;
+		case 1:
+			monocle(m);
+			return;
+		default:
+			mh = m->mfact * m->wh;
+			th = (m->wh - mh) / (n - 1);
+			ty = m->wy + mh;
 	}
 	for (i = mx = 0, tx = m->wx, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++) {
 		if (i < 1) {
