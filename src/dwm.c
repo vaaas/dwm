@@ -39,7 +39,7 @@ void die(const char *msg) {
 	exit(1);
 }
 
-void * ecalloc(size_t length, size_t size) {
+void *ecalloc(size_t length, size_t size) {
 	void *p = calloc(length, size);
 	if (!p) die("calloc:");
 	return p;
@@ -54,7 +54,7 @@ typedef struct {
 	GC gc;
 } Drw;
 
-Drw * drw_create(Display *dpy, int screen, Window root, unsigned int w, unsigned int h) {
+Drw *drw_create(Display *dpy, int screen, Window root, unsigned int w, unsigned int h) {
 	Drw *drw = ecalloc(1, sizeof(Drw));
 
 	drw->dpy = dpy;
