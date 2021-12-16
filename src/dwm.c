@@ -27,6 +27,7 @@
 #define HEIGHT(X) ((X)->h + 2 * (X)->bw)
 #define TAGMASK ((1 << workspaces) - 1)
 #define LAST(X) (X[strlen(X)-1])
+#define FOREACH(X, XS) for (X = XS; X; X = X->next)
 
 void die(const char *msg) {
 	fputs(msg, stderr);
@@ -358,13 +359,13 @@ int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact) {
 void arrange(Monitor *m) {
 	if (m)
 		showhide(m->stack);
-	else for (m = mons; m; m = m->next)
-		showhide(m->stack);
+	else FOREACH(m, mons)
+		{ showhide(m->stack); }
 	if (m) {
 		arrangemon(m);
 		restack(m);
-	} else for (m = mons; m; m = m->next)
-		arrangemon(m);
+	} else FOREACH(m, mons)
+		{ arrangemon(m); }
 }
 
 void arrangemon(Monitor *m) {
@@ -398,7 +399,7 @@ void cleanup(void) {
 
 	view(&a);
 	selmon->lt[selmon->sellt] = &foo;
-	for (m = mons; m; m = m->next)
+	FOREACH(m, mons)
 		while (m->stack)
 			unmanage(m->stack, 0);
 	XUngrabKey(dpy, AnyKey, AnyModifier, root);
@@ -434,9 +435,9 @@ void clientmessage(XEvent *e) {
 	if (cme->message_type == netatom[NetWMState]) {
 		if (cme->data.l[1] == netatom[NetWMFullscreen] || cme->data.l[2] == netatom[NetWMFullscreen])
 			setfullscreen(c,
-                (cme->data.l[0] == 1 /* _NET_WM_STATE_ADD */
+				(cme->data.l[0] == 1 /* _NET_WM_STATE_ADD */
 				|| (cme->data.l[0] == 2 /* _NET_WM_STATE_TOGGLE */
-                    && !c->isfullscreen)));
+					&& !c->isfullscreen)));
 	} else if (cme->message_type == netatom[NetActiveWindow]) {
 		if (c != selmon->sel && !c->isurgent)
 			seturgent(c, 1);
@@ -473,8 +474,8 @@ void configurenotify(XEvent *e) {
 		sh = ev->height;
 		if (updategeom() || dirty) {
 			drw_resize(drw, sw, bh);
-			for (m = mons; m; m = m->next) {
-				for (c = m->clients; c; c = c->next)
+			FOREACH(m, mons) {
+				FOREACH(c, m->clients)
 					if (c->isfullscreen)
 						resizeclient(c, m->mx, m->my, m->mw, m->mh);
 				XMoveResizeWindow(dpy, m->barwin, m->wx, m->by, m->ww, bh);
@@ -875,7 +876,7 @@ void monocle(Monitor *m) {
 	unsigned int n = 0;
 	Client *c;
 
-	for (c = m->clients; c; c = c->next)
+	FOREACH(c, m->clients)
 		if (ISVISIBLE(c))
 			n++;
 	for (c = nexttiled(m->clients); c; c = nexttiled(c->next))
@@ -1303,11 +1304,9 @@ void updateclientlist() {
 	Monitor *m;
 
 	XDeleteProperty(dpy, root, netatom[NetClientList]);
-	for (m = mons; m; m = m->next)
-		for (c = m->clients; c; c = c->next)
-			XChangeProperty(dpy, root, netatom[NetClientList],
-				XA_WINDOW, 32, PropModeAppend,
-				(unsigned char *) &(c->win), 1);
+	FOREACH(m, mons)
+		FOREACH(c, m->clients)
+			XChangeProperty(dpy, root, netatom[NetClientList], XA_WINDOW, 32, PropModeAppend, (unsigned char *) &(c->win), 1);
 }
 
 int updategeom(void) {
@@ -1481,10 +1480,12 @@ Client * wintoclient(Window w) {
 	Client *c;
 	Monitor *m;
 
-	for (m = mons; m; m = m->next)
-		for (c = m->clients; c; c = c->next)
+	FOREACH(m, mons) {
+		FOREACH(c, m->clients) {
 			if (c->win == w)
 				return c;
+		}
+	}
 	return NULL;
 }
 
@@ -1495,7 +1496,7 @@ Monitor * wintomon(Window w) {
 
 	if (w == root && getrootptr(&x, &y))
 		return recttomon(x, y, 1, 1);
-	for (m = mons; m; m = m->next)
+	FOREACH(m, mons)
 		if (w == m->barwin)
 			return m;
 	if ((c = wintoclient(w)))
