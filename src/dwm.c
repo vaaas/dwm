@@ -357,15 +357,12 @@ int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact) {
 }
 
 void arrange(Monitor *m) {
-	if (m)
-		showhide(m->stack);
-	else FOREACH(m, mons)
-		{ showhide(m->stack); }
+	if (m) showhide(m->stack);
+	else FOREACH(m, mons) { showhide(m->stack); }
 	if (m) {
 		arrangemon(m);
 		restack(m);
-	} else FOREACH(m, mons)
-		{ arrangemon(m); }
+	} else FOREACH(m, mons) { arrangemon(m); }
 }
 
 void arrangemon(Monitor *m) {
