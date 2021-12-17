@@ -1536,7 +1536,7 @@ int main(int argc, char *argv[]) {
 		die("dwm-"VERSION);
 	else if (argc != 1)
 		die("usage: dwm [-v]");
-	if (!(dpy = XOpenDisplay(NULL)))
+	else if (!(dpy = XOpenDisplay(NULL)))
 		die("dwm: cannot open display");
 	checkotherwm();
 	setup();
