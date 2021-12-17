@@ -1058,8 +1058,7 @@ void setlayout(Layout layout) {
 }
 
 void setmfact(const Arg *arg) {
-	if (!arg || !selmon->layout)
-		return;
+	if (!arg || !selmon->layout) return;
 	selmon->mfact = clamp(arg->f + selmon->mfact, 0.1, 0.9);
 	arrange(selmon);
 }
@@ -1431,9 +1430,7 @@ int xerror(Display *dpy, XErrorEvent *ee) {
 	return xerrorxlib(dpy, ee); // may call exit
 }
 
-int xerrordummy(Display *dpy, XErrorEvent *ee) {
-	return 0;
-}
+int xerrordummy(Display *dpy, XErrorEvent *ee) { return 0; }
 
 /* Startup Error handler to check if another window manager
  * is already running. */
