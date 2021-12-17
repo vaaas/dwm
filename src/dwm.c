@@ -20,11 +20,10 @@
 #define CLEANMASK(mask) (mask & ~(numlockmask|LockMask) & (ShiftMask|ControlMask|Mod1Mask|Mod2Mask|Mod3Mask|Mod4Mask|Mod5Mask))
 #define INTERSECT(x,y,w,h,m) (MAX(0, MIN((x)+(w),(m)->wx+(m)->ww) - MAX((x),(m)->wx)) \
 							 * MAX(0, MIN((y)+(h),(m)->wy+(m)->wh) - MAX((y),(m)->wy)))
-#define ISVISIBLE(C) ((C->tags & C->mon->tagset[C->mon->seltags]))
+#define ISVISIBLE(C) (C->tag == C->mon->tag)
 #define LENGTH(X) (sizeof X / sizeof X[0])
 #define WIDTH(X) ((X)->w + 2 * (X)->bw)
 #define HEIGHT(X) ((X)->h + 2 * (X)->bw)
-#define TAGMASK ((1 << workspaces) - 1)
 #define LASTS(X) (X[strlen(X)-1])
 #define LASTA(X) (X[sizeof X / sizeof X[0] - 1])
 #define FOREACH(X, XS) for (X = XS; X; X = X->next)
@@ -118,7 +117,6 @@ enum DefaultAtom {
 
 typedef union {
 	int i;
-	unsigned int ui;
 	float f;
 	const void *v;
 } Arg;
@@ -131,7 +129,7 @@ struct Client {
 	int oldx, oldy, oldw, oldh;
 	int basew, baseh, incw, inch, maxw, maxh, minw, minh;
 	int bw, oldbw;
-	unsigned int tags;
+	unsigned int tag;
 	int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen;
 	Client *next;
 	Client *snext;
@@ -154,8 +152,7 @@ struct Monitor {
 	int by; // bar geometry
 	int mx, my, mw, mh; // screen size
 	int wx, wy, ww, wh; // window area
-	unsigned int seltags;
-	unsigned int tagset[2];
+	unsigned int tag;
 	Client *clients;
 	Client *sel;
 	Client *stack;
@@ -164,7 +161,7 @@ struct Monitor {
 	Layout layout;
 };
 
-/* function declarations */
+// function declarations
 static void applyrules(Client *c);
 static int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact);
 static void arrange(Monitor *m);
@@ -240,7 +237,6 @@ static int xerrorstart(Display *dpy, XErrorEvent *ee);
 static void zoom(const Arg *arg);
 static float clamp(float x, float l, float h);
 static unsigned int tile_count(Monitor *m);
-
 static void monocle(Monitor *m);
 static void tile(Monitor *m);
 static void vstack (Monitor *m);
@@ -286,8 +282,7 @@ unsigned int tile_count(Monitor *m) {
 
 void applyrules(Client *c) {
 	c->isfloating = 0;
-	c->tags = 0;
-	c->tags = c->tags & TAGMASK ? c->tags & TAGMASK : c->mon->tagset[c->mon->seltags];
+	c->tag = c->mon->tag;
 }
 
 int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact) {
@@ -388,7 +383,7 @@ void checkotherwm(void) {
 }
 
 void cleanup(void) {
-	Arg a = {.ui = ~0};
+	Arg a = {.i = 0};
 	Monitor *m;
 
 	view(&a);
@@ -533,7 +528,7 @@ void configurerequest(XEvent *e) {
 Monitor *createmon(void) {
 	Monitor *m;
 	m = ecalloc(1, sizeof(Monitor));
-	m->tagset[0] = m->tagset[1] = 1;
+	m->tag = 0;
 	m->mfact = mfact;
 	m->layout = layouts[0];
 	return m;
@@ -718,18 +713,15 @@ long getstate(Window w) {
 
 void grabkeys(void) {
 	updatenumlockmask();
-	{
-		unsigned int i, j;
-		unsigned int modifiers[] = { 0, LockMask, numlockmask, numlockmask|LockMask };
-		KeyCode code;
+	unsigned int i, j;
+	unsigned int modifiers[] = { 0, LockMask, numlockmask, numlockmask|LockMask };
+	KeyCode code;
 
-		XUngrabKey(dpy, AnyKey, AnyModifier, root);
-		for (i = 0; i < LENGTH(keys); i++)
-			if ((code = XKeysymToKeycode(dpy, keys[i].keysym)))
-				for (j = 0; j < LENGTH(modifiers); j++)
-					XGrabKey(dpy, code, keys[i].mod | modifiers[j], root,
-						True, GrabModeAsync, GrabModeAsync);
-	}
+	XUngrabKey(dpy, AnyKey, AnyModifier, root);
+	for (i = 0; i < LENGTH(keys); i++)
+		if ((code = XKeysymToKeycode(dpy, keys[i].keysym)))
+			for (j = 0; j < LENGTH(modifiers); j++)
+				XGrabKey(dpy, code, keys[i].mod | modifiers[j], root, True, GrabModeAsync, GrabModeAsync);
 }
 
 static int isuniquegeom(XineramaScreenInfo *unique, size_t n, XineramaScreenInfo *info) {
@@ -781,7 +773,7 @@ void manage(Window w, XWindowAttributes *wa) {
 
 	if (XGetTransientForHint(dpy, w, &trans) && (t = wintoclient(trans))) {
 		c->mon = t->mon;
-		c->tags = t->tags;
+		c->tag = t->tag;
 	} else {
 		c->mon = selmon;
 		applyrules(c);
@@ -988,7 +980,7 @@ void sendmon(Client *c, Monitor *m) {
 	detach(c);
 	detachstack(c);
 	c->mon = m;
-	c->tags = m->tagset[m->seltags]; /* assign tags of target monitor */
+	c->tag = m->tag; // assign tags of target monitor
 	attach(c);
 	attachstack(c);
 	focus(NULL);
@@ -1158,8 +1150,8 @@ void sigchld(int unused) {
 }
 
 void tag(const Arg *arg) {
-	if (selmon->sel && arg->ui & TAGMASK) {
-		selmon->sel->tags = arg->ui & TAGMASK;
+	if (selmon->sel && arg->i) {
+		selmon->sel->tag = arg->i;
 		focus(NULL);
 		arrange(selmon);
 	}
@@ -1387,11 +1379,8 @@ void updatewmhints(Client *c) {
 }
 
 void view(const Arg *arg) {
-	if ((arg->ui & TAGMASK) == selmon->tagset[selmon->seltags])
-		return;
-	selmon->seltags ^= 1; /* toggle sel tagset */
-	if (arg->ui & TAGMASK)
-		selmon->tagset[selmon->seltags] = arg->ui & TAGMASK;
+	if (arg->i == selmon->tag) return;
+	selmon->tag = arg->i;
 	focus(NULL);
 	arrange(selmon);
 }

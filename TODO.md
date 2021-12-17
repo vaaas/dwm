@@ -1,16 +1,16 @@
 - refactor colours [DONE]
-    - don't use schemes, just use two pointers [WONTFIX] ended up using unsigned longs instead
-- refactor layouts [WIP]
-    - Layout probably doesn't need to be a struct. It can just be a function pointer
-    - refactor sellt -> nothing [DONE]
-    - refactor lt[] -> layout [DONE]
-- refactor tags [WIP]
-    - we don't use workspace names, just numbers [DONE]
-    - clients should be assumed to always have one tag [WIP]
+	- don't use schemes, just use two pointers [WONTFIX] ended up using unsigned longs instead
+- refactor layouts [DONE]
+	- Layout probably doesn't need to be a struct. It can just be a function pointer [DONE]
+	- refactor sellt -> nothing [DONE]
+	- refactor lt[] -> layout [DONE]
+- refactor tags [DONE]
+	- we don't use workspace names, just numbers [DONE]
+	- clients should be assumed to always have one tag [DONE]
 - receive basic configuration from Xresources
-    - see https://dwm.suckless.org/patches/xresources/
+	- see https://dwm.suckless.org/patches/xresources/
 - stop listening to keyboard events
-    - start listening to a unix domain socket
+	- start listening to a unix domain socket
 - port to xcb
-    - see https://github.com/julian-goldsmith/dwm-xcb
+	- see https://github.com/julian-goldsmith/dwm-xcb
 - fix XKeycodeToKeysym deprecation

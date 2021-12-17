@@ -8,11 +8,11 @@ static const Layout layouts[] = { tile, monocle, };
 
 #define MODKEY Mod4Mask
 #define TAGKEYS(KEY,TAG) \
-	{ MODKEY,                       KEY,      view,           {.ui = 1 << TAG} }, \
-	{ MODKEY|ControlMask,           KEY,      tag,            {.ui = 1 << TAG} },
+	{ MODKEY,                       KEY,      view,           {.i = TAG}, }, \
+	{ MODKEY|ControlMask,           KEY,      tag,            {.i = TAG}, },
 
 static Key keys[] = {
-	/* modifier           key           function        argument */
+	/* modifier           key            function        argument */
 	{ MODKEY,             XK_e,          focusstack,     {.i = +1 } },
 	{ MODKEY,             XK_o,          focusstack,     {.i = -1 } },
 	{ MODKEY|ControlMask, XK_e,          cyclelayout,    {.i = +1 } },
