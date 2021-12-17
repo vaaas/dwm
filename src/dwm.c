@@ -943,11 +943,10 @@ void restack(Monitor *m) {
 
 void run(void) {
 	XEvent ev;
-	/* main event loop */
-	XSync(dpy, False);
+	XSync(dpy, False); // main event loop
 	while (running && !XNextEvent(dpy, &ev))
 		if (handler[ev.type])
-			handler[ev.type](&ev); /* call handler */
+			handler[ev.type](&ev); // call handler
 }
 
 void scan(void) {
