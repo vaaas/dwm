@@ -197,7 +197,6 @@ static void killclient(const Arg *arg);
 static void manage(Window w, XWindowAttributes *wa);
 static void mappingnotify(XEvent *e);
 static void maprequest(XEvent *e);
-static void monocle(Monitor *m);
 static void motionnotify(XEvent *e);
 static Client *nexttiled(Client *c);
 static void pop(Client *);
@@ -222,8 +221,6 @@ static void showhide(Client *c);
 static void sigchld(int unused);
 static void tag(const Arg *arg);
 static void tagmon(const Arg *arg);
-static void tile(Monitor *m);
-static void vstack (Monitor *m);
 static void togglefloating(const Arg *arg);
 static void unfocus(Client *c, int setfocus);
 static void unmanage(Client *c, int destroyed);
@@ -241,9 +238,13 @@ static int xerror(Display *dpy, XErrorEvent *ee);
 static int xerrordummy(Display *dpy, XErrorEvent *ee);
 static int xerrorstart(Display *dpy, XErrorEvent *ee);
 static void zoom(const Arg *arg);
-static void bstackhoriz(Monitor *m);
 static float clamp(float x, float l, float h);
 static unsigned int tile_count(Monitor *m);
+
+static void monocle(Monitor *m);
+static void tile(Monitor *m);
+static void vstack (Monitor *m);
+static void bstackhoriz(Monitor *m);
 
 static int screen;
 static int sw, sh;			/* X display screen geometry width, height */
@@ -841,12 +842,6 @@ void maprequest(XEvent *e) {
 		manage(ev->window, &wa);
 }
 
-void monocle(Monitor *m) {
-	Client *c;
-	 FOREACHTILE(c, m)
-		resize(c, m->wx, m->wy, m->ww - 2 * c->bw, m->wh - 2 * c->bw, 0);
-}
-
 void motionnotify(XEvent *e) {
 	static Monitor *mon = NULL;
 	Monitor *m;
@@ -1175,36 +1170,6 @@ void tagmon(const Arg *arg) {
 		sendmon(selmon->sel, dirtomon(arg->i));
 }
 
-void tile(Monitor *m) {
-	if (m->mw > m->mh) vstack(m);
-	else bstackhoriz(m);
-}
-
-void vstack(Monitor *m) {
-	unsigned int i, h, mw, my, ty;
-	Client *c;
-
-	unsigned int n = tile_count(m);
-	switch(n) {
-		case 0: return;
-		case 1:
-			monocle(m);
-			return;
-		default:
-			mw = m->ww * m->mfact;
-	}
-	for (i = my = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++)
-		if (i < 1) {
-			h = (m->wh - my) / (MIN(n, 1) - i);
-			resize(c, m->wx, m->wy + my, mw - (2*c->bw), h - (2*c->bw), 0);
-			my += HEIGHT(c);
-		} else {
-			h = (m->wh - ty) / (n - i);
-			resize(c, m->wx + mw, m->wy + ty, m->ww - mw - (2*c->bw), h - (2*c->bw), 0);
-			ty += HEIGHT(c);
-		}
-}
-
 void togglefloating(const Arg *arg) {
 	if (!selmon->sel)
 		return;
@@ -1500,14 +1465,53 @@ void zoom(const Arg *arg) {
 	pop(c);
 }
 
-static void bstackhoriz(Monitor *m) {
+// layouts
+void monocle(Monitor *m) {
+	Client *c;
+	FOREACHTILE(c, m)
+		resize(c, m->wx, m->wy, m->ww - 2 * c->bw, m->wh - 2 * c->bw, 0);
+}
+
+void tile(Monitor *m) {
+	if (m->mw > m->mh) vstack(m);
+	else bstackhoriz(m);
+}
+
+void vstack(Monitor *m) {
+	unsigned int i, h, mw, my, ty;
+	Client *c;
+
+	unsigned int n = tile_count(m);
+	switch(n) {
+		case 0:
+			return;
+		case 1:
+			monocle(m);
+			return;
+		default:
+			mw = m->ww * m->mfact;
+	}
+	for (i = my = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++)
+		if (i < 1) {
+			h = (m->wh - my) / (MIN(n, 1) - i);
+			resize(c, m->wx, m->wy + my, mw - (2*c->bw), h - (2*c->bw), 0);
+			my += HEIGHT(c);
+		} else {
+			h = (m->wh - ty) / (n - i);
+			resize(c, m->wx + mw, m->wy + ty, m->ww - mw - (2*c->bw), h - (2*c->bw), 0);
+			ty += HEIGHT(c);
+		}
+}
+
+void bstackhoriz(Monitor *m) {
 	int w, mh, mx, tx, ty, th;
 	unsigned int i;
 	Client *c;
 	unsigned int n = tile_count(m);
 
 	switch(n) {
-		case 0: return;
+		case 0:
+			return;
 		case 1:
 			monocle(m);
 			return;
