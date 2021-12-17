@@ -536,7 +536,7 @@ Monitor *createmon(void) {
 
 void cyclelayout(const Arg *arg) {
 	unsigned int i;
-	for(i = 0; layouts[i] == selmon->layout; i++);
+	for(i = 0; layouts[i] != selmon->layout; i++);
 	if(arg->i > 0) { // next layout
 		if(layouts[i] && i < LENGTH(layouts) - 1)
 			setlayout(layouts[i+1]);
@@ -1383,7 +1383,7 @@ void view(const Arg *arg) {
 	arrange(selmon);
 }
 
-Client * wintoclient(Window w) {
+Client *wintoclient(Window w) {
 	Client *c;
 	Monitor *m;
 
@@ -1396,7 +1396,7 @@ Client * wintoclient(Window w) {
 	return NULL;
 }
 
-Monitor * wintomon(Window w) {
+Monitor *wintomon(Window w) {
 	int x, y;
 	Client *c;
 	Monitor *m;
@@ -1406,13 +1406,13 @@ Monitor * wintomon(Window w) {
 	FOREACH(m, mons)
 		if (w == m->barwin)
 			return m;
-	if ((c = wintoclient(w)))
+	if (c = wintoclient(w))
 		return c->mon;
 	return selmon;
 }
 
 /* There's no way to check accesses to destroyed windows, thus those cases are
- * ignored (especially on UnmapNotify's). Other types of errors call Xlibs
+ * ignored (especially on UnmapNotify's). Other types of errors call Xlib's
  * default error handler, which may call exit. */
 int xerror(Display *dpy, XErrorEvent *ee) {
 	if (ee->error_code == BadWindow
@@ -1432,10 +1432,9 @@ int xerror(Display *dpy, XErrorEvent *ee) {
 
 int xerrordummy(Display *dpy, XErrorEvent *ee) { return 0; }
 
-/* Startup Error handler to check if another window manager
- * is already running. */
+// Startup Error handler to check if another window manager is already running.
 int xerrorstart(Display *dpy, XErrorEvent *ee) {
-	die("dwm: another window manager == already running");
+	die("dwm: another window manager is already running");
 	return -1;
 }
 
