@@ -584,16 +584,17 @@ void detachstack(Client *c) {
 	}
 }
 
-Monitor * dirtomon(int dir) {
+Monitor *dirtomon(int dir) { // finds the next or previous monitor
 	Monitor *m = NULL;
-
-	if (dir > 0) {
-		if (!(m = selmon->next))
-			m = mons;
-	} else if (selmon == mons)
-		for (m = mons; m->next; m = m->next);
-	else
-		for (m = mons; m->next != selmon; m = m->next);
+	if (dir > 0) // find next monitor
+		m = selmon->next ? selmon->next : mons;
+	else { // find previous monitor
+		m = mons;
+		if (selmon == mons) // find the very last monitor
+			FIND(m, m->next == NULL)
+		else // find the monitor before the current monitor
+			FIND(m, m->next == selmon)
+	}
 	return m;
 }
 
@@ -1177,9 +1178,8 @@ void tag(const Arg *arg) {
 }
 
 void tagmon(const Arg *arg) {
-	if (!selmon->sel || !mons->next)
-		return;
-	sendmon(selmon->sel, dirtomon(arg->i));
+	if (sendmon->sel && mons->next)
+		sendmon(selmon->sel, dirtomon(arg->i));
 }
 
 void tile(Monitor *m) {
