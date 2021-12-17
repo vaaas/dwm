@@ -1,12 +1,12 @@
 - refactor colours [DONE]
     - don't use schemes, just use two pointers [WONTFIX] ended up using unsigned longs instead
-- refactor layouts
+- refactor layouts [WIP]
     - Layout probably doesn't need to be a struct. It can just be a function pointer
     - refactor sellt -> nothing [DONE]
     - refactor lt[] -> layout [DONE]
-- refactor tags
-    - we don't use workspace names, just numbers DONE
-    - clients should be assumed to always have one tag WIP
+- refactor tags [WIP]
+    - we don't use workspace names, just numbers [DONE]
+    - clients should be assumed to always have one tag [WIP]
 - receive basic configuration from Xresources
     - see https://dwm.suckless.org/patches/xresources/
 - stop listening to keyboard events
