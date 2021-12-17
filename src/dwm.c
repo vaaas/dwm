@@ -152,9 +152,9 @@ typedef struct {
 struct Monitor {
 	float mfact;
 	int num;
-	int by; /* bar geometry */
-	int mx, my, mw, mh; /* screen size */
-	int wx, wy, ww, wh; /* window area  */
+	int by; // bar geometry
+	int mx, my, mw, mh; // screen size
+	int wx, wy, ww, wh; // window area
 	unsigned int seltags;
 	unsigned int sellt;
 	unsigned int tagset[2];
@@ -224,7 +224,8 @@ static void showhide(Client *c);
 static void sigchld(int unused);
 static void tag(const Arg *arg);
 static void tagmon(const Arg *arg);
-static void tile(Monitor *);
+static void tile(Monitor *m);
+static void vstack (Monitor *m);
 static void togglefloating(const Arg *arg);
 static void unfocus(Client *c, int setfocus);
 static void unmanage(Client *c, int destroyed);
@@ -1178,11 +1179,16 @@ void tag(const Arg *arg) {
 }
 
 void tagmon(const Arg *arg) {
-	if (sendmon->sel && mons->next)
+	if (selmon->sel && mons->next)
 		sendmon(selmon->sel, dirtomon(arg->i));
 }
 
 void tile(Monitor *m) {
+	if (m->mw > m->mh) vstack(m);
+	else bstackhoriz(m);
+}
+
+void vstack(Monitor *m) {
 	unsigned int i, h, mw, my, ty;
 	Client *c;
 

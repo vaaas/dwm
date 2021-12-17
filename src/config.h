@@ -6,7 +6,6 @@ static const float mfact = 0.6; /* factor of master area size [0.05..0.95] */
 static const int bh = 0; // bar height
 static const Layout layouts[] = {
 	{ tile },
-	{ bstackhoriz },
 	{ monocle },
 };
 
