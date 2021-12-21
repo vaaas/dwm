@@ -850,8 +850,8 @@ void motionnotify(XEvent *e) {
 }
 
 Client *nexttiled(Client *c) {
-	 FIND(c, !c->isfloating || ISVISIBLE(c));
-	 return c;
+	for (; c && (c->isfloating || !ISVISIBLE(c)); c = c->next);
+	return c;
 }
 
 void pop(Client *c) {
@@ -1406,7 +1406,7 @@ Monitor *wintomon(Window w) {
 	FOREACH(m, mons)
 		if (w == m->barwin)
 			return m;
-	if (c = wintoclient(w))
+	if ((c = wintoclient(w)))
 		return c->mon;
 	return selmon;
 }
