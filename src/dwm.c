@@ -1148,7 +1148,7 @@ void sigchld(int unused) {
 }
 
 void tag(const Arg *arg) {
-	if (selmon->sel && arg->i) {
+	if (selmon->sel) {
 		selmon->sel->tag = arg->i;
 		focus(NULL);
 		arrange(selmon);
