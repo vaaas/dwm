@@ -29,7 +29,6 @@ static Key keys[] = {
 	{ MODKEY|ShiftMask,   XK_f,          togglefloating, {0} },
 	{ MODKEY,             XK_comma,      focusmon,       {.i = -1 } },
 	{ MODKEY,             XK_period,     focusmon,       {.i = +1 } },
-	{ MODKEY|ShiftMask,   XK_q,          quit,           {0} },
 	TAGKEYS(              XK_w,          0)
 	TAGKEYS(              XK_u,          1)
 	TAGKEYS(              XK_v,          2)
