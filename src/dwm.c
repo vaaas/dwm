@@ -1380,7 +1380,7 @@ void zoom(const Arg *arg) {
 void monocle(Monitor *m) {
 	Client *c;
 	FOREACHTILE(c, m)
-		resize(c, m->wx, m->wy, m->ww - 2 * c->bw, m->wh - 2 * c->bw, 0);
+		resize(c, m->wx - c->bw, m->wy - c->bw, m->ww, m->wh, 0);
 }
 
 void tile(Monitor *m) {
