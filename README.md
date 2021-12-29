@@ -1,48 +1,55 @@
-dwm - dynamic window manager
-============================
-dwm is an extremely fast, small, and dynamic window manager for X.
+# dwm - dynamic window manager
 
+This is my personal fork of [dwm by suckless](https://dwm.suckless.org/).
 
-Requirements
-------------
-In order to build dwm you need the Xlib header files.
+## Changes
 
+Unlike most dwm forks, this fork is aims to be *more* minimal compared to the original, by removing features that should be taken care of by more specialised tools. To date, it's smaller by about 1000 SLOC compared to upstream dwm.
 
-Installation
-------------
-Edit config.mk to match your local setup (dwm is installed into
-the /usr/local namespace by default).
+- Reorganised repository structure for simplicity.
+- Removed useless files, like the manpage or the icon.
+- Merged several disparate files into one file for simplicity.
+- Removed the bar. There are lots of good bars available, and you should use those.
+- Removed mouse support. There is no point in mouse support for tiling WMs.
+- Removed floating (NULL) layout. Use a floating window manager.
+- Removed support for drawing and fonts. Window managers should just manage windows, not drawing.
+- Simplified several data structures.
+- Added bstackhoriz layout to better support vertical monitors.
 
-Afterwards enter the following command to build and install dwm (if
-necessary as root):
+### Future plans
 
-    make clean install
+- Removing all remaining uses of calloc. All memory required should be allocated statically.
+- Removing keyboard support and replacing it with IPC through Unix domain socket.
+- Removing support for `config.h` and receiving configuration through Xresources.
+- Use the more modern `xcb` library instead of `xlib`.
+- Improve documentation.
 
+## Requirements
 
-Running dwm
------------
+- Xlib header files
+
+## Installation
+
+Build:
+
+```bash
+make all
+```
+
+Place the `dwm` binary somewhere in your `PATH`
+
+```bash
+mv bin/dwm /usr/local/bin
+```
+
+## Running
+
 Add the following line to your .xinitrc to start dwm using startx:
 
-    exec dwm
+```bash
+exec dwm
+```
 
-In order to connect dwm to a specific display, make sure that
-the DISPLAY environment variable is set correctly, e.g.:
+## Configuration
 
-    DISPLAY=foo.bar:1 exec dwm
-
-(This will start dwm on display :1 of the host foo.bar.)
-
-In order to display status info in the bar, you can do something
-like this in your .xinitrc:
-
-    while xsetroot -name "`date` `uptime | sed 's/.*,//'`"
-    do
-    	sleep 1
-    done &
-    exec dwm
-
-
-Configuration
--------------
-The configuration of dwm is done by creating a custom config.h
-and (re)compiling the source code.
+Edit the `src/config.h` file.

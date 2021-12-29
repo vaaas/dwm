@@ -14,3 +14,5 @@
 - port to xcb
 	- see https://github.com/julian-goldsmith/dwm-xcb
 - fix XKeycodeToKeysym deprecation
+- don't use calloc
+	- turn linked lists into statically allocated arrays
