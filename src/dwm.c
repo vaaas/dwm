@@ -13,7 +13,6 @@
 #include <X11/Xproto.h>
 #include <X11/Xutil.h>
 #include <X11/extensions/Xinerama.h>
-#include <X11/Xft/Xft.h>
 
 #define MAX(A, B) ((A) > (B) ? (A) : (B))
 #define MIN(A, B) ((A) < (B) ? (A) : (B))
@@ -45,55 +44,6 @@ void *ecalloc(size_t length, size_t size) {
 	return p;
 }
 
-typedef struct {
-	unsigned int w, h;
-	Display *dpy;
-	int screen;
-	Window root;
-	Drawable drawable;
-	GC gc;
-} Drw;
-
-Drw *drw_create(Display *dpy, int screen, Window root, unsigned int w, unsigned int h) {
-	Drw *drw = ecalloc(1, sizeof(Drw));
-
-	drw->dpy = dpy;
-	drw->screen = screen;
-	drw->root = root;
-	drw->w = w;
-	drw->h = h;
-	drw->drawable = XCreatePixmap(dpy, root, w, h, DefaultDepth(dpy, screen));
-	drw->gc = XCreateGC(dpy, root, 0, NULL);
-	XSetLineAttributes(dpy, drw->gc, 1, LineSolid, CapButt, JoinMiter);
-
-	return drw;
-}
-
-void drw_resize(Drw *drw, unsigned int w, unsigned int h) {
-	if (!drw)
-		return;
-
-	drw->w = w;
-	drw->h = h;
-	if (drw->drawable)
-		XFreePixmap(drw->dpy, drw->drawable);
-	drw->drawable = XCreatePixmap(drw->dpy, drw->root, w, h, DefaultDepth(drw->dpy, drw->screen));
-}
-
-void drw_free(Drw *drw) {
-	XFreePixmap(drw->dpy, drw->drawable);
-	XFreeGC(drw->dpy, drw->gc);
-	free(drw);
-}
-
-void drw_map(Drw *drw, Window win, int x, int y, unsigned int w, unsigned int h) {
-	if (!drw)
-		return;
-
-	XCopyArea(drw->dpy, drw->drawable, win, drw->gc, x, y, w, h, x, y);
-	XSync(drw->dpy, False);
-}
-
 enum EMWHAtom {
 	NetSupported,
 	NetWMName,
@@ -118,7 +68,6 @@ enum DefaultAtom {
 typedef union {
 	int i;
 	float f;
-	const void *v;
 } Arg;
 
 typedef struct Monitor Monitor;
@@ -198,7 +147,6 @@ static void motionnotify(XEvent *e);
 static Client *nexttiled(Client *c);
 static void pop(Client *);
 static void propertynotify(XEvent *e);
-static void quit(const Arg *arg);
 static Monitor *recttomon(int x, int y, int w, int h);
 static void resize(Client *c, int x, int y, int w, int h, int interact);
 static void resizeclient(Client *c, int x, int y, int w, int h);
@@ -263,7 +211,6 @@ static void (*handler[LASTEvent]) (XEvent *) = {
 static Atom wmatom[WMLast], netatom[NetLast];
 static bool running = true;
 static Display *dpy;
-static Drw *drw;
 static Monitor *mons, *selmon;
 static Window root, wmcheckwin;
 
@@ -395,7 +342,6 @@ void cleanup(void) {
 	while (mons)
 		cleanupmon(mons);
 	XDestroyWindow(dpy, wmcheckwin);
-	drw_free(drw);
 	XSync(dpy, False);
 	XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);
 	XDeleteProperty(dpy, root, netatom[NetActiveWindow]);
@@ -462,7 +408,6 @@ void configurenotify(XEvent *e) {
 		sw = ev->width;
 		sh = ev->height;
 		if (updategeom() || dirty) {
-			drw_resize(drw, sw, bh);
 			FOREACH(m, mons) {
 				FOREACH(c, m->clients)
 					if (c->isfullscreen)
@@ -870,24 +815,24 @@ void propertynotify(XEvent *e) {
 		return; /* ignore */
 	else if ((c = wintoclient(ev->window))) {
 		switch(ev->atom) {
-		default: break;
-		case XA_WM_TRANSIENT_FOR:
-			if (!c->isfloating && (XGetTransientForHint(dpy, c->win, &trans)) && (c->isfloating = (wintoclient(trans)) != NULL))
-				arrange(c->mon);
-			break;
-		case XA_WM_NORMAL_HINTS:
-			updatesizehints(c);
-			break;
-		case XA_WM_HINTS:
-			updatewmhints(c);
-			break;
+			default: break;
+			case XA_WM_TRANSIENT_FOR:
+				if (!c->isfloating &&
+					(XGetTransientForHint(dpy, c->win, &trans)) &&
+					(c->isfloating = (wintoclient(trans)) != NULL))
+					arrange(c->mon);
+				break;
+			case XA_WM_NORMAL_HINTS:
+				updatesizehints(c);
+				break;
+			case XA_WM_HINTS:
+				updatewmhints(c);
+				break;
 		}
 		if (ev->atom == netatom[NetWMWindowType])
 			updatewindowtype(c);
 	}
 }
-
-void quit(const Arg *arg) { running = false; }
 
 Monitor * recttomon(int x, int y, int w, int h) {
 	Monitor *m, *r = selmon;
@@ -1075,7 +1020,6 @@ void setup(void) {
 	sw = DisplayWidth(dpy, screen);
 	sh = DisplayHeight(dpy, screen);
 	root = RootWindow(dpy, screen);
-	drw = drw_create(dpy, screen, root, sw, sh);
 	updategeom();
 	/* init atoms */
 	utf8string = XInternAtom(dpy, "UTF8_STRING", False);
@@ -1474,6 +1418,7 @@ void vstack(Monitor *m) {
 			return;
 		default:
 			mw = m->ww * m->mfact;
+			break;
 	}
 	for (i = my = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++)
 		if (i < 1) {
