@@ -78,7 +78,7 @@ struct Client {
 	int oldx, oldy, oldw, oldh;
 	int basew, baseh, incw, inch, maxw, maxh, minw, minh;
 	unsigned char tag;
-	int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen;
+	bool isfixed, isfloating, neverfocus, oldstate, isfullscreen;
 	Client *next;
 	Client *snext;
 	Monitor *mon;
@@ -96,7 +96,6 @@ typedef void (*Layout)(Monitor *m);
 
 struct Monitor {
 	float mfact;
-	int num;
 	int mx, my, mw, mh; // screen size
 	int wx, wy, ww, wh; // window area
 	unsigned char tag;
@@ -157,7 +156,6 @@ static void setfullscreen(Client *c, int fullscreen);
 static void setlayout(Layout layout);
 static void setmfact(const Arg *arg);
 static void setup(void);
-static void seturgent(Client *c, int urg);
 static void showhide(Client *c);
 static void sigchld(int unused);
 static void tag(const Arg *arg);
@@ -366,9 +364,6 @@ void clientmessage(XEvent *e) {
 				(cme->data.l[0] == 1 /* _NET_WM_STATE_ADD */
 				|| (cme->data.l[0] == 2 /* _NET_WM_STATE_TOGGLE */
 					&& !c->isfullscreen)));
-	} else if (cme->message_type == netatom[NetActiveWindow]) {
-		if (c != selmon->sel && !c->isurgent)
-			seturgent(c, 1);
 	}
 }
 
@@ -551,8 +546,6 @@ void focus(Client *c) {
 	if (c) {
 		if (c->mon != selmon)
 			selmon = c->mon;
-		if (c->isurgent)
-			seturgent(c, 0);
 		detachstack(c);
 		attachstack(c);
 		XSetWindowBorder(dpy, c->win, col_sel);
@@ -1027,17 +1020,6 @@ void setup(void) {
 	focus(NULL);
 }
 
-void seturgent(Client *c, int urg) {
-	XWMHints *wmh;
-
-	c->isurgent = urg;
-	if (!(wmh = XGetWMHints(dpy, c->win)))
-		return;
-	wmh->flags = urg ? (wmh->flags | XUrgencyHint) : (wmh->flags & ~XUrgencyHint);
-	XSetWMHints(dpy, c->win, wmh);
-	XFree(wmh);
-}
-
 void showhide(Client *c) {
 	if (!c)
 		return;
@@ -1169,7 +1151,6 @@ int updategeom(void) {
 				if (i >= n || unique[i].x_org != m->mx || unique[i].y_org != m->my || unique[i].width != m->mw || unique[i].height != m->mh)
 				{
 					dirty = 1;
-					m->num = i;
 					m->mx = m->wx = unique[i].x_org;
 					m->my = m->wy = unique[i].y_org;
 					m->mw = m->ww = unique[i].width;
@@ -1279,8 +1260,7 @@ void updatewmhints(Client *c) {
 		if (c == selmon->sel && wmh->flags & XUrgencyHint) {
 			wmh->flags &= ~XUrgencyHint;
 			XSetWMHints(dpy, c->win, wmh);
-		} else
-			c->isurgent = (wmh->flags & XUrgencyHint) ? 1 : 0;
+		}
 		if (wmh->flags & InputHint)
 			c->neverfocus = !wmh->input;
 		else
