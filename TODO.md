@@ -16,3 +16,5 @@
 - fix XKeycodeToKeysym deprecation
 - don't use calloc
 	- turn linked lists into statically allocated arrays
+- clients should have monitors. monitors shouldn't have clients
+- tags should have layouts, not monitors

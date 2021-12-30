@@ -78,7 +78,7 @@ struct Client {
 	int oldx, oldy, oldw, oldh;
 	int basew, baseh, incw, inch, maxw, maxh, minw, minh;
 	int bw, oldbw;
-	unsigned int tag;
+	unsigned char tag;
 	int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen;
 	Client *next;
 	Client *snext;
@@ -101,12 +101,11 @@ struct Monitor {
 	int by; // bar geometry
 	int mx, my, mw, mh; // screen size
 	int wx, wy, ww, wh; // window area
-	unsigned int tag;
+	unsigned char tag;
 	Client *clients;
 	Client *sel;
 	Client *stack;
 	Monitor *next;
-	Window barwin;
 	Layout layout;
 };
 
@@ -219,7 +218,7 @@ float clamp(float x, float l, float h) {
 }
 
 unsigned int tile_count(Monitor *m) {
-	 unsigned int n = 0;
+	 unsigned char n = 0;
 	 Client *c;
 	 FOREACHTILE(c, m) n++;
 	 return n;
@@ -354,8 +353,6 @@ void cleanupmon(Monitor *mon) {
 		for (m = mons; m && m->next != mon; m = m->next);
 		m->next = mon->next;
 	}
-	XUnmapWindow(dpy, mon->barwin);
-	XDestroyWindow(dpy, mon->barwin);
 	free(mon);
 }
 
@@ -410,7 +407,6 @@ void configurenotify(XEvent *e) {
 				FOREACH(c, m->clients)
 					if (c->isfullscreen)
 						resizeclient(c, m->mx, m->my, m->mw, m->mh);
-				XMoveResizeWindow(dpy, m->barwin, m->wx, m->by, m->ww, bh);
 			}
 			focus(NULL);
 			arrange(NULL);
@@ -478,7 +474,7 @@ Monitor *createmon(void) {
 }
 
 void cyclelayout(const Arg *arg) {
-	unsigned int i;
+	unsigned char i;
 	for(i = 0; layouts[i] != selmon->layout; i++);
 	if(arg->i > 0) { // next layout
 		if(layouts[i] && i < LENGTH(layouts) - 1)
@@ -817,11 +813,11 @@ void propertynotify(XEvent *e) {
 	}
 }
 
-Monitor * recttomon(int x, int y, int w, int h) {
+Monitor *recttomon(int x, int y, int w, int h) {
 	Monitor *m, *r = selmon;
 	int a, area = 0;
 
-	for (m = mons; m; m = m->next)
+	FOREACH(m, mons)
 		if ((a = INTERSECT(x, y, w, h, m)) > area) {
 			area = a;
 			r = m;
@@ -858,7 +854,6 @@ void restack(Monitor *m) {
 		XRaiseWindow(dpy, m->sel->win);
 	if (m->layout) {
 		wc.stack_mode = Below;
-		wc.sibling = m->barwin;
 		for (c = m->stack; c; c = c->snext)
 			if (!c->isfloating && ISVISIBLE(c)) {
 				XConfigureWindow(dpy, c->win, CWSibling|CWStackMode, &wc);
@@ -1326,16 +1321,13 @@ Client *wintoclient(Window w) {
 Monitor *wintomon(Window w) {
 	int x, y;
 	Client *c;
-	Monitor *m;
 
 	if (w == root && getrootptr(&x, &y))
 		return recttomon(x, y, 1, 1);
-	FOREACH(m, mons)
-		if (w == m->barwin)
-			return m;
-	if ((c = wintoclient(w)))
+	else if ((c = wintoclient(w)))
 		return c->mon;
-	return selmon;
+	else
+		return selmon;
 }
 
 /* There's no way to check accesses to destroyed windows, thus those cases are
