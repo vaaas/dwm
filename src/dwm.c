@@ -21,8 +21,8 @@
 							 * MAX(0, MIN((y)+(h),(m)->wy+(m)->wh) - MAX((y),(m)->wy)))
 #define ISVISIBLE(C) (C->tag == C->mon->tag)
 #define LENGTH(X) (sizeof X / sizeof X[0])
-#define WIDTH(X) ((X)->w + 2 * (X)->bw)
-#define HEIGHT(X) ((X)->h + 2 * (X)->bw)
+#define WIDTH(X) ((X)->w + 2 * borderpx)
+#define HEIGHT(X) ((X)->h + 2 * borderpx)
 #define LASTS(X) (X[strlen(X)-1])
 #define LASTA(X) (X[sizeof X / sizeof X[0] - 1])
 #define FOREACH(X, XS) for (X = XS; X; X = X->next)
@@ -77,7 +77,6 @@ struct Client {
 	int x, y, w, h;
 	int oldx, oldy, oldw, oldh;
 	int basew, baseh, incw, inch, maxw, maxh, minw, minh;
-	int bw, oldbw;
 	unsigned char tag;
 	int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen;
 	Client *next;
@@ -98,7 +97,6 @@ typedef void (*Layout)(Monitor *m);
 struct Monitor {
 	float mfact;
 	int num;
-	int by; // bar geometry
 	int mx, my, mw, mh; // screen size
 	int wx, wy, ww, wh; // window area
 	unsigned char tag;
@@ -241,18 +239,18 @@ int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact) {
 			*x = sw - WIDTH(c);
 		if (*y > sh)
 			*y = sh - HEIGHT(c);
-		if (*x + *w + 2 * c->bw < 0)
+		if (*x + *w + 2 * borderpx < 0)
 			*x = 0;
-		if (*y + *h + 2 * c->bw < 0)
+		if (*y + *h + 2 * borderpx < 0)
 			*y = 0;
 	} else {
 		if (*x >= m->wx + m->ww)
 			*x = m->wx + m->ww - WIDTH(c);
 		if (*y >= m->wy + m->wh)
 			*y = m->wy + m->wh - HEIGHT(c);
-		if (*x + *w + 2 * c->bw <= m->wx)
+		if (*x + *w + 2 * borderpx <= m->wx)
 			*x = m->wx;
-		if (*y + *h + 2 * c->bw <= m->wy)
+		if (*y + *h + 2 * borderpx <= m->wy)
 			*y = m->wy;
 	}
 	if (*h < bh)
@@ -385,7 +383,7 @@ void configure(Client *c) {
 	ce.y = c->y;
 	ce.width = c->w;
 	ce.height = c->h;
-	ce.border_width = c->bw;
+	ce.border_width = c->isfullscreen ? 0 : borderpx;
 	ce.above = None;
 	ce.override_redirect = False;
 	XSendEvent(dpy, c->win, False, StructureNotifyMask, (XEvent *)&ce);
@@ -421,9 +419,7 @@ void configurerequest(XEvent *e) {
 	XWindowChanges wc;
 
 	if ((c = wintoclient(ev->window))) {
-		if (ev->value_mask & CWBorderWidth)
-			c->bw = ev->border_width;
-		else if (c->isfloating || !selmon->layout) {
+		if (c->isfloating || !selmon->layout) {
 			m = c->mon;
 			if (ev->value_mask & CWX) {
 				c->oldx = c->x;
@@ -591,7 +587,7 @@ void focusmon(const Arg *arg) {
 void focusstack(const Arg *arg) {
 	Client *c = NULL, *i;
 
-	if (!selmon->sel)
+	if (!selmon->sel || selmon->sel->isfullscreen)
 		return;
 	if (arg->i > 0) {
 		for (c = selmon->sel->next; c && !ISVISIBLE(c); c = c->next);
@@ -708,7 +704,6 @@ void manage(Window w, XWindowAttributes *wa) {
 	c->y = c->oldy = wa->y;
 	c->w = c->oldw = wa->width;
 	c->h = c->oldh = wa->height;
-	c->oldbw = wa->border_width;
 
 	if (XGetTransientForHint(dpy, w, &trans) && (t = wintoclient(trans))) {
 		c->mon = t->mon;
@@ -724,10 +719,9 @@ void manage(Window w, XWindowAttributes *wa) {
 		c->y = c->mon->my + c->mon->mh - HEIGHT(c);
 	c->x = MAX(c->x, c->mon->mx);
 	/* only fix client y-offset, if the client center might cover the bar */
-	c->y = MAX(c->y, ((c->mon->by == c->mon->my) && (c->x + (c->w / 2) >= c->mon->wx) && (c->x + (c->w / 2) < c->mon->wx + c->mon->ww)) ? bh : c->mon->my);
-	c->bw = borderpx;
+	c->y = MAX(c->y, ((bh == c->mon->my) && (c->x + (c->w / 2) >= c->mon->wx) && (c->x + (c->w / 2) < c->mon->wx + c->mon->ww)) ? bh : c->mon->my);
 
-	wc.border_width = c->bw;
+	wc.border_width = borderpx;
 	XConfigureWindow(dpy, w, CWBorderWidth, &wc);
 	XSetWindowBorder(dpy, w, col_norm);
 	configure(c); /* propagates border_width, if size doesn't change */
@@ -837,7 +831,7 @@ void resizeclient(Client *c, int x, int y, int w, int h) {
 	c->oldy = c->y; c->y = wc.y = y;
 	c->oldw = c->w; c->w = wc.width = w;
 	c->oldh = c->h; c->h = wc.height = h;
-	wc.border_width = c->bw;
+	wc.border_width = c->isfullscreen ? 0 : borderpx;
 	XConfigureWindow(dpy, c->win, CWX|CWY|CWWidth|CWHeight|CWBorderWidth, &wc);
 	configure(c);
 	XSync(dpy, False);
@@ -955,8 +949,6 @@ void setfullscreen(Client *c, int fullscreen) {
 			PropModeReplace, (unsigned char*)&netatom[NetWMFullscreen], 1);
 		c->isfullscreen = 1;
 		c->oldstate = c->isfloating;
-		c->oldbw = c->bw;
-		c->bw = 0;
 		c->isfloating = 1;
 		resizeclient(c, c->mon->mx, c->mon->my, c->mon->mw, c->mon->mh);
 		XRaiseWindow(dpy, c->win);
@@ -965,7 +957,6 @@ void setfullscreen(Client *c, int fullscreen) {
 			PropModeReplace, (unsigned char*)0, 0);
 		c->isfullscreen = 0;
 		c->isfloating = c->oldstate;
-		c->bw = c->oldbw;
 		c->x = c->oldx;
 		c->y = c->oldy;
 		c->w = c->oldw;
@@ -1111,7 +1102,7 @@ void unmanage(Client *c, int destroyed) {
 	detach(c);
 	detachstack(c);
 	if (!destroyed) {
-		wc.border_width = c->oldbw;
+		wc.border_width = borderpx;
 		XGrabServer(dpy); /* avoid race conditions */
 		XSetErrorHandler(xerrordummy);
 		XConfigureWindow(dpy, c->win, CWBorderWidth, &wc); /* restore border */
@@ -1372,7 +1363,7 @@ void zoom(const Arg *arg) {
 void monocle(Monitor *m) {
 	Client *c;
 	FOREACHTILE(c, m)
-		resize(c, m->wx - c->bw, m->wy - c->bw, m->ww, m->wh, 0);
+		resize(c, m->wx - borderpx, m->wy - borderpx, m->ww, m->wh, 0);
 }
 
 void tile(Monitor *m) {
@@ -1398,11 +1389,11 @@ void vstack(Monitor *m) {
 	for (i = my = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++)
 		if (i < 1) {
 			h = (m->wh - my) / (MIN(n, 1) - i);
-			resize(c, m->wx, m->wy + my, mw - (2*c->bw), h - (2*c->bw), 0);
+			resize(c, m->wx, m->wy + my, mw - (2*borderpx), h - (2*borderpx), 0);
 			my += HEIGHT(c);
 		} else {
 			h = (m->wh - ty) / (n - i);
-			resize(c, m->wx + mw, m->wy + ty, m->ww - mw - (2*c->bw), h - (2*c->bw), 0);
+			resize(c, m->wx + mw, m->wy + ty, m->ww - mw - (2*borderpx), h - (2*borderpx), 0);
 			ty += HEIGHT(c);
 		}
 }
@@ -1427,10 +1418,10 @@ void bstackhoriz(Monitor *m) {
 	for (i = mx = 0, tx = m->wx, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++) {
 		if (i < 1) {
 			w = (m->ww - mx) / (MIN(n, 1) - i);
-			resize(c, m->wx + mx, m->wy, w - (2 * c->bw), mh - (2 * c->bw), 0);
+			resize(c, m->wx + mx, m->wy, w - (2 * borderpx), mh - (2 * borderpx), 0);
 			mx += WIDTH(c);
 		} else {
-			resize(c, tx, ty, m->ww - (2 * c->bw), th - (2 * c->bw), 0);
+			resize(c, tx, ty, m->ww - (2 * borderpx), th - (2 * borderpx), 0);
 			if (th != m->wh)
 				ty += HEIGHT(c);
 		}
