@@ -107,7 +107,6 @@ struct Monitor {
 };
 
 // function declarations
-static void applyrules(Client *c);
 static int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact);
 static void arrange(Monitor *m);
 static void arrangemon(Monitor *m);
@@ -218,11 +217,6 @@ unsigned int tile_count(Monitor *m) {
 	 Client *c;
 	 FOREACHTILE(c, m) n++;
 	 return n;
-}
-
-void applyrules(Client *c) {
-	c->isfloating = 0;
-	c->tag = c->mon->tag;
 }
 
 int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact) {
@@ -703,7 +697,8 @@ void manage(Window w, XWindowAttributes *wa) {
 		c->tag = t->tag;
 	} else {
 		c->mon = selmon;
-		applyrules(c);
+		c->isfloating = 0;
+		c->tag = c->mon->tag;
 	}
 
 	if (c->x + WIDTH(c) > c->mon->mx + c->mon->mw)
