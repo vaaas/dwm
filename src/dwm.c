@@ -969,16 +969,16 @@ void setup(void) {
 	XSetWindowAttributes wa;
 	Atom utf8string;
 
-	/* clean up any zombies immediately */
+	// clean up any zombies immediately
 	sigchld(0);
 
-	/* init screen */
+	// init screen
 	screen = DefaultScreen(dpy);
 	sw = DisplayWidth(dpy, screen);
 	sh = DisplayHeight(dpy, screen);
 	root = RootWindow(dpy, screen);
 	updategeom();
-	/* init atoms */
+	// init atoms
 	utf8string = XInternAtom(dpy, "UTF8_STRING", False);
 	wmatom[WMProtocols] = XInternAtom(dpy, "WM_PROTOCOLS", False);
 	wmatom[WMDelete] = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
@@ -993,7 +993,7 @@ void setup(void) {
 	netatom[NetWMWindowType] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
 	netatom[NetWMWindowTypeDialog] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DIALOG", False);
 	netatom[NetClientList] = XInternAtom(dpy, "_NET_CLIENT_LIST", False);
-	/* supporting window for NetWMCheck */
+	// supporting window for NetWMCheck
 	wmcheckwin = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 0, 0, 0);
 	XChangeProperty(dpy, wmcheckwin, netatom[NetWMCheck], XA_WINDOW, 32,
 		PropModeReplace, (unsigned char *) &wmcheckwin, 1);
@@ -1001,7 +1001,7 @@ void setup(void) {
 		PropModeReplace, (unsigned char *) "dwm", 3);
 	XChangeProperty(dpy, root, netatom[NetWMCheck], XA_WINDOW, 32,
 		PropModeReplace, (unsigned char *) &wmcheckwin, 1);
-	/* EWMH support per view */
+	// EWMH support per view
 	XChangeProperty(dpy, root, netatom[NetSupported], XA_ATOM, 32,
 		PropModeReplace, (unsigned char *) netatom, NetLast);
 	XDeleteProperty(dpy, root, netatom[NetClientList]);
@@ -1019,13 +1019,13 @@ void showhide(Client *c) {
 	if (!c)
 		return;
 	if (ISVISIBLE(c)) {
-		/* show clients top down */
+		// show clients top down
 		XMoveWindow(dpy, c->win, c->x, c->y);
 		if ((!c->mon->layout || c->isfloating) && !c->isfullscreen)
 			resize(c, c->x, c->y, c->w, c->h, 0);
 		showhide(c->snext);
 	} else {
-		/* hide clients bottom up */
+		// hide clients bottom up
 		showhide(c->snext);
 		XMoveWindow(dpy, c->win, WIDTH(c) * -2, c->y);
 	}
@@ -1053,7 +1053,7 @@ void tagmon(const Arg *arg) {
 void togglefloating(const Arg *arg) {
 	if (!selmon->sel)
 		return;
-	if (selmon->sel->isfullscreen) /* no support for fullscreen windows */
+	if (selmon->sel->isfullscreen) // no support for fullscreen windows
 		return;
 	selmon->sel->isfloating = !selmon->sel->isfloating || selmon->sel->isfixed;
 	if (selmon->sel->isfloating)
@@ -1080,9 +1080,9 @@ void unmanage(Client *c, int destroyed) {
 	detachstack(c);
 	if (!destroyed) {
 		wc.border_width = borderpx;
-		XGrabServer(dpy); /* avoid race conditions */
+		XGrabServer(dpy); // avoid race conditions
 		XSetErrorHandler(xerrordummy);
-		XConfigureWindow(dpy, c->win, CWBorderWidth, &wc); /* restore border */
+		XConfigureWindow(dpy, c->win, CWBorderWidth, &wc); // restore border
 		setclientstate(c, WithdrawnState);
 		XSync(dpy, False);
 		XSetErrorHandler(xerror);
@@ -1127,14 +1127,14 @@ int updategeom(void) {
 		XineramaScreenInfo *unique = NULL;
 
 		for (n = 0, m = mons; m; m = m->next, n++);
-		/* only consider unique geometries as separate screens */
+		// only consider unique geometries as separate screens
 		unique = ecalloc(nn, sizeof(XineramaScreenInfo));
 		for (i = 0, j = 0; i < nn; i++)
 			if (isuniquegeom(unique, j, &info[i]))
 				memcpy(&unique[j++], &info[i], sizeof(XineramaScreenInfo));
 		XFree(info);
 		nn = j;
-		if (n <= nn) { /* new monitors available */
+		if (n <= nn) { // new monitors available
 			for (i = 0; i < (nn - n); i++) {
 				for (m = mons; m && m->next; m = m->next);
 				if (m)
@@ -1151,7 +1151,7 @@ int updategeom(void) {
 					m->mw = m->ww = unique[i].width;
 					m->mh = m->wh = unique[i].height;
 				}
-		} else { /* less monitors available nn < n */
+		} else { // less monitors available nn < n
 			for (i = nn; i < n; i++) {
 				for (m = mons; m && m->next; m = m->next);
 				while ((c = m->clients)) {
@@ -1202,7 +1202,7 @@ void updatesizehints(Client *c) {
 	XSizeHints size;
 
 	if (!XGetWMNormalHints(dpy, c->win, &size, &msize))
-		/* size is uninitialized, ensure that size.flags aren't used */
+		// size is uninitialized, ensure that size.flags aren't used
 		size.flags = PSize;
 	if (size.flags & PBaseSize) {
 		c->basew = size.base_width;
