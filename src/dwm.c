@@ -12,6 +12,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xproto.h>
 #include <X11/Xutil.h>
+#include <X11/Xresource.h>
 #include <X11/extensions/Xinerama.h>
 
 #define MAX(A, B) ((A) > (B) ? (A) : (B))
@@ -106,6 +107,12 @@ struct Monitor {
 	Layout layout;
 };
 
+enum ResourceType {
+	INTEGER = 0,
+	FLOAT = 1,
+	HEX = 2
+};
+
 // function declarations
 static int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact);
 static void arrange(Monitor *m);
@@ -176,6 +183,8 @@ static int xerror(Display *dpy, XErrorEvent *ee);
 static int xerrordummy(Display *dpy, XErrorEvent *ee);
 static int xerrorstart(Display *dpy, XErrorEvent *ee);
 static void zoom(const Arg *arg);
+static void load_xresources(Display *dpy);
+static void resource_load(XrmDatabase db, char *name, enum ResourceType rtype, void *dst);
 static float clamp(float x, float l, float h);
 static unsigned int tile_count(Monitor *m);
 static void monocle(Monitor *m);
@@ -206,6 +215,13 @@ static Display *dpy;
 static Monitor *mons, *selmon;
 static Window root, wmcheckwin;
 
+Layout layouts[] = { tile, monocle, };
+unsigned char borderpx = 10;
+unsigned char workspaces = 4;
+unsigned char bh = 0;
+unsigned long col_sel = 0x0000FF;
+unsigned long col_norm = 0x000000;
+unsigned long mfact = 0.6;
 #include "config.h"
 
 float clamp(float x, float l, float h) {
@@ -1403,6 +1419,48 @@ void bstackhoriz(Monitor *m) {
 	}
 }
 
+void load_xresources(Display *dpy) {
+	char *resm;
+	XrmDatabase db;
+
+	resm = XResourceManagerString(dpy);
+	if (!resm) return;
+	db = XrmGetStringDatabase(resm);
+	resource_load(db, "borderpx", INTEGER, &borderpx);
+	resource_load(db, "workspaces", INTEGER, &workspaces);
+	resource_load(db, "bh", INTEGER, &bh);
+	resource_load(db, "col_sel", HEX, &col_sel);
+	resource_load(db, "col_norm", HEX, &col_norm);
+	resource_load(db, "mfact", FLOAT, &col_norm);
+}
+
+void resource_load(XrmDatabase db, char *name, enum ResourceType rtype, void *dst) {
+	char fullname[256];
+	char *type;
+	XrmValue ret;
+
+	unsigned long *ul = NULL;
+	ul = dst;
+
+	snprintf(fullname, sizeof(fullname), "%s.%s", "dwm", name);
+	fullname[sizeof(fullname) - 1] = '\0';
+
+	XrmGetResource(db, fullname, "*", &type, &ret);
+	if (!(ret.addr == NULL || strncmp("String", type, 64))) {
+		switch (rtype) {
+		case INTEGER:
+			*ul = strtoul(ret.addr, NULL, 10);
+			break;
+		case FLOAT: break;
+			*ul = strtoul(ret.addr, NULL, 10);
+			break;
+		case HEX: break;
+			*ul = strtoul(ret.addr, NULL, 16);
+			break;
+		}
+	}
+}
+
 int main(int argc, char *argv[]) {
 	if (argc == 2 && !strcmp("-v", argv[1]))
 		die("dwm-"VERSION);
@@ -1411,6 +1469,8 @@ int main(int argc, char *argv[]) {
 	else if (!(dpy = XOpenDisplay(NULL)))
 		die("dwm: cannot open display");
 	checkotherwm();
+	XrmInitialize();
+	load_xresources(dpy);
 	setup();
 	scan();
 	run();
