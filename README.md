@@ -15,14 +15,15 @@ Unlike most dwm forks, this fork is aims to be *more* minimal compared to the or
 - Removed support for drawing and fonts. Window managers should just manage windows, not drawing.
 - Simplified several data structures.
 - Added bstackhoriz layout to better support vertical monitors.
+- Receive configuration through Xresources.
 
 ### Future plans
 
 - Removing all remaining uses of calloc. All memory required should be allocated statically.
 - Removing keyboard support and replacing it with IPC through Unix domain socket.
-- Removing support for `config.h` and receiving configuration through Xresources.
 - Use the more modern `xcb` library instead of `xlib`.
 - Improve documentation.
+- Port to a lisp. :)
 
 ## Requirements
 
