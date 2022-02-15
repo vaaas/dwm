@@ -108,9 +108,9 @@ struct Monitor {
 };
 
 enum ResourceType {
-	INTEGER = 0,
-	FLOAT = 1,
-	HEX = 2
+	INTEGER,
+	FLOAT,
+	HEX
 };
 
 // function declarations
@@ -221,7 +221,7 @@ unsigned char workspaces = 4;
 unsigned char bh = 0;
 unsigned long col_sel = 0x0000FF;
 unsigned long col_norm = 0x000000;
-unsigned long mfact = 0.6;
+float mfact = 0.6;
 #include "config.h"
 
 float clamp(float x, float l, float h) {
@@ -1431,16 +1431,16 @@ void load_xresources(Display *dpy) {
 	resource_load(db, "bh", INTEGER, &bh);
 	resource_load(db, "col_sel", HEX, &col_sel);
 	resource_load(db, "col_norm", HEX, &col_norm);
-	resource_load(db, "mfact", FLOAT, &col_norm);
+	resource_load(db, "mfact", FLOAT, &mfact);
 }
 
 void resource_load(XrmDatabase db, char *name, enum ResourceType rtype, void *dst) {
 	char fullname[256];
 	char *type;
 	XrmValue ret;
-
-	unsigned long *ul = NULL;
-	ul = dst;
+	unsigned long *ul = dst;
+	float *fl = dst;
+	unsigned char *uc = dst;
 
 	snprintf(fullname, sizeof(fullname), "%s.%s", "dwm", name);
 	fullname[sizeof(fullname) - 1] = '\0';
@@ -1449,12 +1449,12 @@ void resource_load(XrmDatabase db, char *name, enum ResourceType rtype, void *ds
 	if (!(ret.addr == NULL || strncmp("String", type, 64))) {
 		switch (rtype) {
 		case INTEGER:
-			*ul = strtoul(ret.addr, NULL, 10);
+			*uc = (unsigned char) strtoul(ret.addr, NULL, 10);
 			break;
-		case FLOAT: break;
-			*ul = strtoul(ret.addr, NULL, 10);
+		case FLOAT:
+			*fl = strtof(ret.addr, NULL);
 			break;
-		case HEX: break;
+		case HEX:
 			*ul = strtoul(ret.addr, NULL, 16);
 			break;
 		}

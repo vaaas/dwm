@@ -7,7 +7,7 @@
 - refactor tags [DONE]
 	- we don't use workspace names, just numbers [DONE]
 	- clients should be assumed to always have one tag [DONE]
-- receive basic configuration from Xresources
+- receive basic configuration from Xresources [DONE]
 	- see https://dwm.suckless.org/patches/xresources/
 - stop listening to keyboard events
 	- start listening to a unix domain socket
