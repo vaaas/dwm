@@ -4,7 +4,6 @@
 #include <X11/Xresource.h>
 #include <X11/Xutil.h>
 #include <X11/extensions/Xinerama.h>
-#include <X11/keysym.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
@@ -68,11 +67,6 @@ enum DefaultAtom {
 	WMLast
 };
 
-typedef union {
-	int i;
-	float f;
-} Arg;
-
 typedef struct Monitor Monitor;
 typedef struct Client Client;
 struct Client {
@@ -87,13 +81,6 @@ struct Client {
 	Monitor *mon;
 	Window win;
 };
-
-typedef struct {
-	unsigned int mod;
-	KeySym keysym;
-	void (*func)(const Arg *);
-	const Arg arg;
-} Key;
 
 typedef void (*Layout)(Monitor *m);
 
@@ -144,7 +131,6 @@ static int getrootptr(int *x, int *y);
 static long getstate(Window w);
 static void killclient();
 static void manage(Window w, XWindowAttributes *wa);
-static void mappingnotify(XEvent *e);
 static void maprequest(XEvent *e);
 static Client *nexttiled(Client *c);
 static void pop(Client *);
@@ -203,7 +189,6 @@ static void (*handler[LASTEvent]) (XEvent *) = {
 	[DestroyNotify] = destroynotify,
 	[EnterNotify] = enternotify,
 	[FocusIn] = focusin,
-	[MappingNotify] = mappingnotify,
 	[MapRequest] = maprequest,
 	[PropertyNotify] = propertynotify,
 	[UnmapNotify] = unmapnotify
@@ -339,7 +324,6 @@ void cleanup(void) {
 	FOREACH(m, mons)
 		while (m->stack)
 			unmanage(m->stack, 0);
-	XUngrabKey(dpy, AnyKey, AnyModifier, root);
 	while (mons)
 		cleanupmon(mons);
 	XDestroyWindow(dpy, wmcheckwin);
@@ -400,7 +384,7 @@ void configurenotify(XEvent *e) {
 	XConfigureEvent *ev = &e->xconfigure;
 	int dirty;
 
-	/* TODO: updategeom handling sucks, needs to be simplified */
+	// TODO: updategeom handling sucks, needs to be simplified
 	if (ev->window == root) {
 		dirty = (sw != ev->width || sh != ev->height);
 		sw = ev->width;
@@ -567,17 +551,15 @@ void focus(Client *c) {
 	selmon->sel = c;
 }
 
-/* there are some broken focus acquiring clients needing extra handling */
+// there are some broken focus acquiring clients needing extra handling
 void focusin(XEvent *e) {
 	XFocusChangeEvent *ev = &e->xfocus;
-
 	if (selmon->sel && ev->window != selmon->sel->win)
 		setfocus(selmon->sel);
 }
 
 void focusmon(char x) {
 	Monitor *m;
-
 	if (!mons->next)
 		return;
 	if ((m = dirtomon(x)) == selmon)
@@ -724,12 +706,6 @@ void manage(Window w, XWindowAttributes *wa) {
 	arrange(c->mon);
 	XMapWindow(dpy, c->win);
 	focus(NULL);
-}
-
-void mappingnotify(XEvent *e) {
-	XMappingEvent *ev = &e->xmapping;
-
-	XRefreshKeyboardMapping(ev);
 }
 
 void maprequest(XEvent *e) {
@@ -1014,9 +990,7 @@ void setup(void) {
 		PropModeReplace, (unsigned char *) netatom, NetLast);
 	XDeleteProperty(dpy, root, netatom[NetClientList]);
 	/* select events */
-	wa.event_mask = SubstructureRedirectMask|SubstructureNotifyMask
-		|EnterWindowMask
-		|LeaveWindowMask|StructureNotifyMask|PropertyChangeMask;
+	wa.event_mask = SubstructureRedirectMask|SubstructureNotifyMask|EnterWindowMask|LeaveWindowMask|StructureNotifyMask|PropertyChangeMask;
 	XChangeWindowAttributes(dpy, root, CWEventMask, &wa);
 	XSelectInput(dpy, root, wa.event_mask);
 	focus(NULL);
@@ -1301,12 +1275,7 @@ Monitor *wintomon(Window w) {
 int xerror(Display *dpy, XErrorEvent *ee) {
 	if (ee->error_code == BadWindow
 		|| (ee->request_code == X_SetInputFocus && ee->error_code == BadMatch)
-		|| (ee->request_code == X_PolyText8 && ee->error_code == BadDrawable)
-		|| (ee->request_code == X_PolyFillRectangle && ee->error_code == BadDrawable)
-		|| (ee->request_code == X_PolySegment && ee->error_code == BadDrawable)
-		|| (ee->request_code == X_ConfigureWindow && ee->error_code == BadMatch)
-		|| (ee->request_code == X_GrabKey && ee->error_code == BadAccess)
-		|| (ee->request_code == X_CopyArea && ee->error_code == BadDrawable))
+		|| (ee->request_code == X_ConfigureWindow && ee->error_code == BadMatch))
 		return 0;
 	fprintf(stderr,
 		"dwm: fatal error: request code=%d, error code=%d\n",
@@ -1315,6 +1284,7 @@ int xerror(Display *dpy, XErrorEvent *ee) {
 }
 
 int xerrordummy(Display *dpy, XErrorEvent *ee) { return 0; }
+Bool evpredicate() { return True; }
 
 // Startup Error handler to check if another window manager is already running.
 int xerrorstart(Display *dpy, XErrorEvent *ee) {
@@ -1377,7 +1347,6 @@ void bstackhoriz(Monitor *m) {
 	unsigned int i;
 	Client *c;
 	unsigned int n = tile_count(m);
-
 	switch(n) {
 		case 0:
 			return;
@@ -1405,7 +1374,6 @@ void bstackhoriz(Monitor *m) {
 void load_xresources(Display *dpy) {
 	char *resm;
 	XrmDatabase db;
-
 	resm = XResourceManagerString(dpy);
 	if (!resm) return;
 	db = XrmGetStringDatabase(resm);
@@ -1444,11 +1412,8 @@ void resource_load(XrmDatabase db, char *name, enum ResourceType rtype, void *ds
 	}
 }
 
-Bool evpredicate() { return True; }
-
 void dispatchcmd(void) {
 	unsigned char c;
-
 	read(fifofd, &c, 1);
 	switch (c) {
 		case 'a': view(0); break;
