@@ -474,6 +474,16 @@ void cyclelayout(char x) {
 	}
 }
 
+void cycleview(char x) {
+	if (x > 0) view(selmon->tag + 1 == workspaces ? 0 : selmon->tag + 1);
+	else view(selmon->tag == 0 ? workspaces - 1 : selmon->tag - 1);
+}
+
+void cycletag(char x) {
+	if (x > 0) tag(selmon->tag + 1 == workspaces ? 0 : selmon->tag + 1);
+	else tag(selmon->tag == 0 ? workspaces - 1 : selmon->tag - 1);
+}
+
 void destroynotify(XEvent *e) {
 	Client *c;
 	XDestroyWindowEvent *ev = &e->xdestroywindow;
@@ -1431,6 +1441,12 @@ void dispatchcmd(void) {
 
 		case 'l': cyclelayout(+1); break;
 		case 'L': cyclelayout(-1); break;
+
+		case 'v': cycleview(+1); break;
+		case 'V': cycleview(-1); break;
+
+		case 's': cycletag(+1); break;
+		case 'S': cycletag(-1); break;
 
 		case 'm': focusmon(+1); break;
 		case 'M': focusmon(-1); break;
