@@ -16,11 +16,12 @@ Unlike most dwm forks, this fork is aims to be *more* minimal compared to the or
 - Simplified several data structures.
 - Added bstackhoriz layout to better support vertical monitors.
 - Receive configuration through Xresources.
+- Removed keyboard support and replaced it with IPC through FIFO.
+- Remove `config.h` support.
 
 ### Future plans
 
 - Removing all remaining uses of calloc. All memory required should be allocated statically.
-- Removing keyboard support and replacing it with IPC through Unix domain socket.
 - Use the more modern `xcb` library instead of `xlib`.
 - Improve documentation.
 - Port to a lisp. :)

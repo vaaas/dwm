@@ -9,11 +9,11 @@
 	- clients should be assumed to always have one tag [DONE]
 - receive basic configuration from Xresources [DONE]
 	- see https://dwm.suckless.org/patches/xresources/
-- stop listening to keyboard events
-	- start listening to a unix domain socket
+- stop listening to keyboard events [DONE]
+	- start listening to a unix domain socket [DONE]
 - port to xcb
 	- see https://github.com/julian-goldsmith/dwm-xcb
-- fix XKeycodeToKeysym deprecation
+- fix XKeycodeToKeysym deprecation [DONE]
 - don't use calloc
 	- turn linked lists into statically allocated arrays
 - clients should have monitors. monitors shouldn't have clients
