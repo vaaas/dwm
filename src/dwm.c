@@ -842,7 +842,7 @@ void run(void) {
 	int dpyfd, maxfd;
 	XSync(dpy, False);
 	dpyfd = ConnectionNumber(dpy);
-	maxfd = 1 + (dpyfd > fifofd ? dpyfd : fifofd);
+	maxfd = MAX(dpyfd, fifofd) + 1;
 	while (running) {
 		FD_ZERO(&rfds);
 		FD_SET(fifofd, &rfds);
@@ -1447,12 +1447,9 @@ void resource_load(XrmDatabase db, char *name, enum ResourceType rtype, void *ds
 Bool evpredicate() { return True; }
 
 void dispatchcmd(void) {
-	unsigned int c;
+	unsigned char c;
 
-	c = getc(&fifofd);
-	printf("%u", c);
-	if (c == EOF) return;
-	else return putc(c, stderr);
+	read(fifofd, &c, 1);
 	switch (c) {
 		case 'a': view(0); break;
 		case 'b': view(1); break;
