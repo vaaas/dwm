@@ -19,7 +19,7 @@ CFLAGS   = -std=c17 -pedantic -Wall -O2 ${INCS} ${CPPFLAGS}
 LDFLAGS  = ${LIBS}
 
 CC = gcc
-SRC = src/dwm.c
+SRC = dwm.c
 
 all: options bin/dwm
 
