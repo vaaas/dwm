@@ -1362,6 +1362,20 @@ void bstackhoriz(Monitor *m) {
 	}
 }
 
+void deck(Monitor *m) {
+	unsigned int mw;
+	Client *c;
+	switch(tile_count(m)) {
+		case 0: break;
+		case 1: monocle(m); break;
+		default:
+			mw = m->ww * m->mfact;
+			resize((c = nexttiled(m->clients)), m->wx, m->wy, mw - 2*borderpx, m->wh - 2*borderpx, False);
+			while((c = nexttiled(c->next))) resize(c, m->wx + mw, m->wy, m->ww - mw - 2*borderpx, m->wh - 2*borderpx, False);
+			break;
+	}
+}
+
 void load_xresources(Display *dpy) {
 	char *resm;
 	XrmDatabase db;
@@ -1443,20 +1457,6 @@ void dispatchcmd(void) {
 		case 'f': togglefloating(); break;
 
 		default: break;
-	}
-}
-
-void deck(Monitor *m) {
-	unsigned int mw;
-	Client *c;
-	switch(tile_count(m)) {
-		case 0: break;
-		case 1: monocle(m); break;
-		default:
-			mw = m->ww * m->mfact;
-			resize((c = nexttiled(m->clients)), m->wx, m->wy, mw - 2*borderpx, m->wh - 2*borderpx, False);
-			while((c = nexttiled(c->next))) resize(c, m->wx + mw, m->wy, m->ww - mw - 2*borderpx, m->wh - 2*borderpx, False);
-			break;
 	}
 }
 
