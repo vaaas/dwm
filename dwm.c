@@ -18,8 +18,7 @@
 
 #define MAX(A, B) ((A) > (B) ? (A) : (B))
 #define MIN(A, B) ((A) < (B) ? (A) : (B))
-#define INTERSECT(x,y,w,h,m) (MAX(0, MIN((x)+(w),(m)->wx+(m)->ww) - MAX((x),(m)->wx)) \
-							 * MAX(0, MIN((y)+(h),(m)->wy+(m)->wh) - MAX((y),(m)->wy)))
+#define INTERSECT(x,y,w,h,m) (MAX(0, MIN((x)+(w),(m)->wx+(m)->ww) - MAX((x),(m)->wx)) * MAX(0, MIN((y)+(h),(m)->wy+(m)->wh) - MAX((y),(m)->wy)))
 #define ISVISIBLE(C) (C->tag == C->mon->tag)
 #define LENGTH(X) (sizeof X / sizeof X[0])
 #define WIDTH(X) ((X)->w + 2 * borderpx)
@@ -129,7 +128,7 @@ static void focusmon(char x);
 static void focusstack(char x);
 static int getrootptr(int *x, int *y);
 static long getstate(Window w);
-static void killclient();
+static void killclient(void);
 static void manage(Window w, XWindowAttributes *wa);
 static void maprequest(XEvent *e);
 static Client *nexttiled(Client *c);
@@ -153,7 +152,7 @@ static void showhide(Client *c);
 static void sigchld(int unused);
 static void tag(unsigned char x);
 static void tagmon(char x);
-static void togglefloating();
+static void togglefloating(void);
 static void unfocus(Client *c, int setfocus);
 static void unmanage(Client *c, int destroyed);
 static void unmapnotify(XEvent *e);
@@ -168,7 +167,7 @@ static Monitor *wintomon(Window w);
 static int xerror(Display *dpy, XErrorEvent *ee);
 static int xerrordummy(Display *dpy, XErrorEvent *ee);
 static int xerrorstart(Display *dpy, XErrorEvent *ee);
-static void zoom();
+static void zoom(void);
 static void load_xresources(Display *dpy);
 static void resource_load(XrmDatabase db, char *name, enum ResourceType rtype, void *dst);
 static float clamp(float x, float l, float h);
@@ -178,6 +177,7 @@ static void tile(Monitor *m);
 static void vstack (Monitor *m);
 static void bstackhoriz(Monitor *m);
 static Bool evpredicate();
+static void deck(Monitor *m);
 
 static int screen;
 static int sw, sh;			/* X display screen geometry width, height */
@@ -199,7 +199,7 @@ static Display *dpy;
 static Monitor *mons, *selmon;
 static Window root, wmcheckwin;
 
-Layout layouts[] = { tile, monocle, };
+Layout layouts[] = { tile, deck, monocle, };
 unsigned char borderpx = 10;
 unsigned char workspaces = 4;
 unsigned char bh = 0;
@@ -648,7 +648,7 @@ static int isuniquegeom(XineramaScreenInfo *unique, size_t n, XineramaScreenInfo
 	return 1;
 }
 
-void killclient() {
+void killclient(void) {
 	if (!selmon->sel)
 		return;
 	if (!sendevent(selmon->sel, wmatom[WMDelete])) {
@@ -1046,7 +1046,7 @@ void tagmon(char x) {
 		sendmon(selmon->sel, dirtomon(x));
 }
 
-void togglefloating() {
+void togglefloating(void) {
 	if (!selmon->sel)
 		return;
 	if (selmon->sel->isfullscreen) // no support for fullscreen windows
@@ -1102,7 +1102,7 @@ void unmapnotify(XEvent *e) {
 	}
 }
 
-void updateclientlist() {
+void updateclientlist(void) {
 	Client *c;
 	Monitor *m;
 
@@ -1302,7 +1302,7 @@ int xerrorstart(Display *dpy, XErrorEvent *ee) {
 	return -1;
 }
 
-void zoom() {
+void zoom(void) {
 	Client *c = selmon->sel;
 
 	if (!selmon->layout || (selmon->sel && selmon->sel->isfloating))
@@ -1320,64 +1320,45 @@ void monocle(Monitor *m) {
 		resize(c, m->wx, m->wy, m->ww - borderpx*2, m->wh - borderpx*2, 0);
 }
 
-void tile(Monitor *m) {
-	if (m->mw > m->mh) vstack(m);
-	else bstackhoriz(m);
-}
+void tile(Monitor *m) { m->mw > m->mh ? vstack(m) : bstackhoriz(m); }
 
 void vstack(Monitor *m) {
-	unsigned int i, h, mw, my, ty;
+	unsigned int mw, h, r, n, i = 0;
 	Client *c;
-
-	unsigned int n = tile_count(m);
-	switch(n) {
-		case 0:
-			return;
-		case 1:
-			monocle(m);
-			return;
+	n = tile_count(m);
+	switch (n) {
+		case 0: break;
+		case 1: monocle(m); break;
 		default:
 			mw = m->ww * m->mfact;
+			h = m->wh/(n-1);
+			r = m->wh-h;
+			resize((c = nexttiled(m->clients)), m->wx, m->wy, mw - 2*borderpx, m->wh - 2*borderpx, 0);
+			while((c = nexttiled(c->next))) {
+				resize(c, m->wx + mw, m->wy + h*i, m->ww - mw - 2*borderpx, ((n - i) == 2 ? h+r : h) - 2*borderpx, 0);
+				i++;
+			}
 			break;
 	}
-	for (i = my = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++)
-		if (i < 1) {
-			h = (m->wh - my) / (MIN(n, 1) - i);
-			resize(c, m->wx, m->wy + my, mw - (2*borderpx), h - (2*borderpx), 0);
-			my += HEIGHT(c);
-		} else {
-			h = (m->wh - ty) / (n - i);
-			resize(c, m->wx + mw, m->wy + ty, m->ww - mw - (2*borderpx), h - (2*borderpx), 0);
-			ty += HEIGHT(c);
-		}
 }
 
 void bstackhoriz(Monitor *m) {
-	int w, mh, mx, tx, ty, th;
-	unsigned int i;
+	unsigned int w, r, mh, n, i = 0;
 	Client *c;
-	unsigned int n = tile_count(m);
+	n = tile_count(m);
 	switch(n) {
-		case 0:
-			return;
-		case 1:
-			monocle(m);
-			return;
-		default:
-			mh = m->mfact * m->wh;
-			th = (m->wh - mh) / (n - 1);
-			ty = m->wy + mh;
-	}
-	for (i = mx = 0, tx = m->wx, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++) {
-		if (i < 1) {
-			w = (m->ww - mx) / (MIN(n, 1) - i);
-			resize(c, m->wx + mx, m->wy, w - (2 * borderpx), mh - (2 * borderpx), 0);
-			mx += WIDTH(c);
-		} else {
-			resize(c, tx, ty, m->ww - (2 * borderpx), th - (2 * borderpx), 0);
-			if (th != m->wh)
-				ty += HEIGHT(c);
+	case 0: break;
+	case 1: monocle(m); break;
+	default:
+		mh = m->mfact * m->wh;
+		resize((c = nexttiled(m->clients)), m->wx, m->wy, m->ww - 2*borderpx, mh - 2*borderpx, 0);
+		w = m->ww/(n-1);
+		r = m->ww - w;
+		while ((c = nexttiled(c->next))) {
+			resize(c, w*i, m->wy + mh, ((n - 1) == 2 ? w+r : w) - 2*borderpx, m->wh - mh - 2*borderpx, 0);
+			i++;
 		}
+		break;
 	}
 }
 
@@ -1462,6 +1443,20 @@ void dispatchcmd(void) {
 		case 'f': togglefloating(); break;
 
 		default: break;
+	}
+}
+
+void deck(Monitor *m) {
+	unsigned int mw;
+	Client *c;
+	switch(tile_count(m)) {
+		case 0: break;
+		case 1: monocle(m); break;
+		default:
+			mw = m->ww * m->mfact;
+			resize((c = nexttiled(m->clients)), m->wx, m->wy, mw - 2*borderpx, m->wh - 2*borderpx, False);
+			while((c = nexttiled(c->next))) resize(c, m->wx + mw, m->wy, m->ww - mw - 2*borderpx, m->wh - 2*borderpx, False);
+			break;
 	}
 }
 
