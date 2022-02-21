@@ -177,7 +177,6 @@ static void tile(Monitor *m);
 static void vstack (Monitor *m);
 static void bstackhoriz(Monitor *m);
 static Bool evpredicate();
-static void deck(Monitor *m);
 
 static int screen;
 static int sw, sh;			/* X display screen geometry width, height */
@@ -199,7 +198,7 @@ static Display *dpy;
 static Monitor *mons, *selmon;
 static Window root, wmcheckwin;
 
-Layout layouts[] = { tile, deck, monocle, };
+Layout layouts[] = { tile, monocle, };
 unsigned char borderpx = 10;
 unsigned char workspaces = 4;
 unsigned char bh = 0;
@@ -1326,19 +1325,16 @@ void vstack(Monitor *m) {
 	unsigned int mw, h, r, n, i = 0;
 	Client *c;
 	n = tile_count(m);
-	switch (n) {
-		case 0: break;
-		case 1: monocle(m); break;
-		default:
-			mw = m->ww * m->mfact;
-			h = m->wh/(n-1);
-			r = m->wh-h;
-			resize((c = nexttiled(m->clients)), m->wx, m->wy, mw - 2*borderpx, m->wh - 2*borderpx, 0);
-			while((c = nexttiled(c->next))) {
-				resize(c, m->wx + mw, m->wy + h*i, m->ww - mw - 2*borderpx, ((n - i) == 2 ? h+r : h) - 2*borderpx, 0);
-				i++;
-			}
-			break;
+	if (n == 1) monocle(m);
+	else if (n > 1) {
+		mw = m->ww * m->mfact;
+		h = m->wh/(n-1);
+		r = m->wh-h;
+		resize((c = nexttiled(m->clients)), m->wx, m->wy, mw - 2*borderpx, m->wh - 2*borderpx, 0);
+		while((c = nexttiled(c->next))) {
+			resize(c, m->wx + mw, m->wy + h*i, m->ww - mw - 2*borderpx, ((n - i) == 2 ? h+r : h) - 2*borderpx, 0);
+			i++;
+		}
 	}
 }
 
@@ -1346,10 +1342,8 @@ void bstackhoriz(Monitor *m) {
 	unsigned int w, r, mh, n, i = 0;
 	Client *c;
 	n = tile_count(m);
-	switch(n) {
-	case 0: break;
-	case 1: monocle(m); break;
-	default:
+	if (n == 1) monocle(m);
+	else if (n > 1) {
 		mh = m->mfact * m->wh;
 		resize((c = nexttiled(m->clients)), m->wx, m->wy, m->ww - 2*borderpx, mh - 2*borderpx, 0);
 		w = m->ww/(n-1);
@@ -1358,21 +1352,6 @@ void bstackhoriz(Monitor *m) {
 			resize(c, w*i, m->wy + mh, ((n - 1) == 2 ? w+r : w) - 2*borderpx, m->wh - mh - 2*borderpx, 0);
 			i++;
 		}
-		break;
-	}
-}
-
-void deck(Monitor *m) {
-	unsigned int mw;
-	Client *c;
-	switch(tile_count(m)) {
-		case 0: break;
-		case 1: monocle(m); break;
-		default:
-			mw = m->ww * m->mfact;
-			resize((c = nexttiled(m->clients)), m->wx, m->wy, mw - 2*borderpx, m->wh - 2*borderpx, False);
-			while((c = nexttiled(c->next))) resize(c, m->wx + mw, m->wy, m->ww - mw - 2*borderpx, m->wh - 2*borderpx, False);
-			break;
 	}
 }
 
@@ -1404,15 +1383,9 @@ void resource_load(XrmDatabase db, char *name, enum ResourceType rtype, void *ds
 	XrmGetResource(db, fullname, "*", &type, &ret);
 	if (!(ret.addr == NULL || strncmp("String", type, 64))) {
 		switch (rtype) {
-		case INTEGER:
-			*uc = (unsigned char) strtoul(ret.addr, NULL, 10);
-			break;
-		case FLOAT:
-			*fl = strtof(ret.addr, NULL);
-			break;
-		case HEX:
-			*ul = strtoul(ret.addr, NULL, 16);
-			break;
+		case INTEGER: *uc = (unsigned char) strtoul(ret.addr, NULL, 10); break;
+		case FLOAT: *fl = strtof(ret.addr, NULL); break;
+		case HEX: *ul = strtoul(ret.addr, NULL, 16); break;
 		}
 	}
 }
