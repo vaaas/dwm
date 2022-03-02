@@ -1322,24 +1322,21 @@ void monocle(Monitor *m) {
 void tile(Monitor *m) { m->mw > m->mh ? vstack(m) : bstackhoriz(m); }
 
 void vstack(Monitor *m) {
-	unsigned int mw, h, r, n, i = 0;
+	unsigned int mw, h, n, i = 0;
 	Client *c;
 	n = tile_count(m);
 	if (n == 1) monocle(m);
 	else if (n > 1) {
 		mw = m->ww * m->mfact;
 		h = m->wh/(n-1);
-		r = m->wh-h;
 		resize((c = nexttiled(m->clients)), m->wx, m->wy, mw - 2*borderpx, m->wh - 2*borderpx, 0);
-		while((c = nexttiled(c->next))) {
-			resize(c, m->wx + mw, m->wy + h*i, m->ww - mw - 2*borderpx, ((n - i) == 2 ? h+r : h) - 2*borderpx, 0);
-			i++;
-		}
+		while((c = nexttiled(c->next)))
+			resize(c, m->wx + mw, m->wy + h*(i++), m->ww - mw - 2*borderpx, h - 2*borderpx, 0);
 	}
 }
 
 void bstackhoriz(Monitor *m) {
-	unsigned int w, r, mh, n, i = 0;
+	unsigned int w, mh, n, i = 0;
 	Client *c;
 	n = tile_count(m);
 	if (n == 1) monocle(m);
@@ -1347,11 +1344,8 @@ void bstackhoriz(Monitor *m) {
 		mh = m->mfact * m->wh;
 		resize((c = nexttiled(m->clients)), m->wx, m->wy, m->ww - 2*borderpx, mh - 2*borderpx, 0);
 		w = m->ww/(n-1);
-		r = m->ww - w;
-		while ((c = nexttiled(c->next))) {
-			resize(c, w*i, m->wy + mh, ((n - 1) == 2 ? w+r : w) - 2*borderpx, m->wh - mh - 2*borderpx, 0);
-			i++;
-		}
+		while ((c = nexttiled(c->next)))
+			resize(c, w*(i++), m->wy + mh, w, m->wh - mh - 2*borderpx, 0);
 	}
 }
 
