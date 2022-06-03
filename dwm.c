@@ -174,6 +174,7 @@ static float clamp(float x, float l, float h);
 static unsigned int tile_count(Monitor *m);
 static void monocle(Monitor *m);
 static void tile(Monitor *m);
+static void centeredmaster(Monitor *m);
 static void vstack (Monitor *m);
 static void bstackhoriz(Monitor *m);
 static Bool evpredicate();
@@ -198,7 +199,7 @@ static Display *dpy;
 static Monitor *mons, *selmon;
 static Window root, wmcheckwin;
 
-Layout layouts[] = { tile, monocle, };
+Layout layouts[] = { centeredmaster, tile, monocle, };
 unsigned char borderpx = 10;
 unsigned char workspaces = 4;
 unsigned char bh = 0;
@@ -425,7 +426,6 @@ void configurerequest(XEvent *e) {
 				c->oldh = c->h;
 				c->h = ev->height;
 			}
-			if ((c->x + c->w) > m->mx + m->mw && c->isfloating)
 				c->x = m->mx + (m->mw / 2 - WIDTH(c) / 2); /* center in x direction */
 			if ((c->y + c->h) > m->my + m->mh && c->isfloating)
 				c->y = m->my + (m->mh / 2 - HEIGHT(c) / 2); /* center in y direction */
@@ -1346,6 +1346,36 @@ void bstackhoriz(Monitor *m) {
 		w = m->ww/(n-1);
 		while ((c = nexttiled(c->next)))
 			resize(c, w*(i++), m->wy + mh, w, m->wh - mh - 2*borderpx, 0);
+	}
+}
+
+void centeredmaster(Monitor *m) {
+	unsigned int i, n, mw, left_y, right_y, left_h, right_h;
+	Client *c;
+	n = tile_count(m);
+	if (n == 2) tile(m);
+	else if (n < 3) monocle(m);
+	else {
+		// setup master (center) window
+		mw = m->ww*m->mfact - 2*borderpx;
+		c = nexttiled(m->clients);
+		resize(c, (m->ww - mw)/2, m->wy, mw, m->wh - 2*borderpx, 0);
+
+		// and now side windows
+		right_y = 0;
+		left_y = 0;
+		right_h = m->wh/((n-1)/2) - 2*borderpx;
+		left_h = m->wh/((n-1)/2 + (n-1)%2) - 2*borderpx;
+		for (i = 1, c = nexttiled(c->next); c; c = nexttiled(c->next), i = !i) {
+			if (i) {
+				resize(c, m->wx, m->wy + left_y, (m->ww - mw)/2 - 2*borderpx, left_h, 0);
+				left_y += left_h;
+			}
+			else {
+				resize(c, m->wx + (m->ww + mw)/2 + 2*borderpx, m->wy + right_y, (m->ww - mw)/2 - 2*borderpx, right_h, 0);
+				right_y += right_h;
+			}
+		}
 	}
 }
 
