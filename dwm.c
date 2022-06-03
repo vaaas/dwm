@@ -19,7 +19,8 @@
 #define MAX(A, B) ((A) > (B) ? (A) : (B))
 #define MIN(A, B) ((A) < (B) ? (A) : (B))
 #define INTERSECT(x,y,w,h,m) (MAX(0, MIN((x)+(w),(m)->wx+(m)->ww) - MAX((x),(m)->wx)) * MAX(0, MIN((y)+(h),(m)->wy+(m)->wh) - MAX((y),(m)->wy)))
-#define ISVISIBLE(C) (C->tag == C->mon->tag)
+#define WORKSPACE(M) (M->workspaces[M->workspace])
+#define ISVISIBLE(C) (C->workspace == &WORKSPACE(C->mon))
 #define LENGTH(X) (sizeof X / sizeof X[0])
 #define WIDTH(X) ((X)->w + 2 * borderpx)
 #define HEIGHT(X) ((X)->h + 2 * borderpx)
@@ -68,12 +69,21 @@ enum DefaultAtom {
 
 typedef struct Monitor Monitor;
 typedef struct Client Client;
+typedef struct Workspace Workspace;
+
+typedef void (*Layout)(Monitor *m);
+
+struct Workspace {
+	float mfact;
+	Layout layout;
+};
+
 struct Client {
 	float mina, maxa;
 	int x, y, w, h;
 	int oldx, oldy, oldw, oldh;
 	int basew, baseh, incw, inch, maxw, maxh, minw, minh;
-	unsigned char tag;
+	Workspace *workspace;
 	bool isfixed, isfloating, neverfocus, oldstate, isfullscreen;
 	Client *next;
 	Client *snext;
@@ -81,18 +91,15 @@ struct Client {
 	Window win;
 };
 
-typedef void (*Layout)(Monitor *m);
-
 struct Monitor {
-	float mfact;
 	int mx, my, mw, mh; // screen size
 	int wx, wy, ww, wh; // window area
-	unsigned char tag;
 	Client *clients;
 	Client *sel;
 	Client *stack;
 	Monitor *next;
-	Layout layout;
+	Workspace workspaces[16];
+	unsigned char workspace;
 };
 
 enum ResourceType {
@@ -249,7 +256,7 @@ int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact) {
 		*h = bh;
 	if (*w < bh)
 		*w = bh;
-	if (c->isfloating || !c->mon->layout) {
+	if (c->isfloating || !WORKSPACE(c->mon).layout) {
 		/* see last two sentences in ICCCM 4.1.2.3 */
 		baseismin = c->basew == c->minw && c->baseh == c->minh;
 		if (!baseismin) { /* temporarily remove base dimensions */
@@ -293,8 +300,8 @@ void arrange(Monitor *m) {
 }
 
 void arrangemon(Monitor *m) {
-	if (m->layout)
-		m->layout(m);
+	if (WORKSPACE(m).layout)
+		WORKSPACE(m).layout(m);
 }
 
 void attach(Client *c) {
@@ -320,7 +327,7 @@ void cleanup(void) {
 	Monitor *m;
 
 	view(0);
-	selmon->layout = NULL;
+	WORKSPACE(selmon).layout = NULL;
 	FOREACH(m, mons)
 		while (m->stack)
 			unmanage(m->stack, 0);
@@ -408,7 +415,7 @@ void configurerequest(XEvent *e) {
 	XWindowChanges wc;
 
 	if ((c = wintoclient(ev->window))) {
-		if (c->isfloating || !selmon->layout) {
+		if (c->isfloating || !WORKSPACE(selmon).layout) {
 			m = c->mon;
 			if (ev->value_mask & CWX) {
 				c->oldx = c->x;
@@ -451,15 +458,17 @@ void configurerequest(XEvent *e) {
 Monitor *createmon(void) {
 	Monitor *m;
 	m = ecalloc(1, sizeof(Monitor));
-	m->tag = 0;
-	m->mfact = mfact;
-	m->layout = layouts[0];
+	m->workspace = 0;
+	for (unsigned char i = 0; i < workspaces; i++) {
+		m->workspaces[i].mfact = mfact;
+		m->workspaces[i].layout = layouts[0];
+	}
 	return m;
 }
 
 void cyclelayout(char x) {
 	unsigned char i;
-	for(i = 0; layouts[i] != selmon->layout; i++);
+	for(i = 0; layouts[i] != WORKSPACE(selmon).layout; i++);
 	if(x > 0) { // next layout
 		if(layouts[i] && i < LENGTH(layouts) - 1)
 			setlayout(layouts[i+1]);
@@ -474,13 +483,13 @@ void cyclelayout(char x) {
 }
 
 void cycleview(char x) {
-	if (x > 0) view(selmon->tag + 1 == workspaces ? 0 : selmon->tag + 1);
-	else view(selmon->tag == 0 ? workspaces - 1 : selmon->tag - 1);
+	if (x > 0) view(selmon->workspace == workspaces ? 0 : selmon->workspace + 1);
+	else view(selmon->workspace == 0 ? workspaces - 1 : selmon->workspace - 1);
 }
 
-void cycletag(char x) {
-	if (x > 0) tag(selmon->tag + 1 == workspaces ? 0 : selmon->tag + 1);
-	else tag(selmon->tag == 0 ? workspaces - 1 : selmon->tag - 1);
+void cycleworkspace(char x) {
+	if (x > 0) tag(selmon->workspace == workspaces ? 0 : selmon->workspace + 1);
+	else tag(selmon->workspace == 0 ? workspaces - 1 : selmon->workspace - 1);
 }
 
 void destroynotify(XEvent *e) {
@@ -676,11 +685,11 @@ void manage(Window w, XWindowAttributes *wa) {
 
 	if (XGetTransientForHint(dpy, w, &trans) && (t = wintoclient(trans))) {
 		c->mon = t->mon;
-		c->tag = t->tag;
+		c->workspace = t->workspace;
 	} else {
 		c->mon = selmon;
 		c->isfloating = 0;
-		c->tag = c->mon->tag;
+		c->workspace = &WORKSPACE(c->mon);
 	}
 
 	if (c->x + WIDTH(c) > c->mon->mx + c->mon->mw)
@@ -806,9 +815,9 @@ void restack(Monitor *m) {
 
 	if (!m->sel)
 		return;
-	if (m->sel->isfloating || !m->layout)
+	if (m->sel->isfloating || !WORKSPACE(m).layout)
 		XRaiseWindow(dpy, m->sel->win);
-	if (m->layout) {
+	if (WORKSPACE(m).layout) {
 		wc.stack_mode = Below;
 		for (c = m->stack; c; c = c->snext)
 			if (!c->isfloating && ISVISIBLE(c)) {
@@ -874,7 +883,7 @@ void sendmon(Client *c, Monitor *m) {
 	detach(c);
 	detachstack(c);
 	c->mon = m;
-	c->tag = m->tag; // assign tags of target monitor
+	c->workspace = &WORKSPACE(m);
 	attach(c);
 	attachstack(c);
 	focus(NULL);
@@ -945,13 +954,13 @@ void setfullscreen(Client *c, int fullscreen) {
 }
 
 void setlayout(Layout layout) {
-	if (layout) selmon->layout = layout;
+	if (layout) WORKSPACE(selmon).layout = layout;
 	if (selmon->sel) arrange(selmon);
 }
 
 void setmfact(float x) {
-	if (!x || !selmon->layout) return;
-	selmon->mfact = clamp(x + selmon->mfact, 0.1, 0.9);
+	if (!x || !WORKSPACE(selmon).layout) return;
+	WORKSPACE(selmon).mfact = clamp(x + WORKSPACE(selmon).mfact, 0.1, 0.9);
 	arrange(selmon);
 }
 
@@ -1016,7 +1025,7 @@ void showhide(Client *c) {
 	if (ISVISIBLE(c)) {
 		// show clients top down
 		XMoveWindow(dpy, c->win, c->x, c->y);
-		if ((!c->mon->layout || c->isfloating) && !c->isfullscreen)
+		if ((!WORKSPACE(c->mon).layout || c->isfloating) && !c->isfullscreen)
 			resize(c, c->x, c->y, c->w, c->h, 0);
 		showhide(c->snext);
 	} else {
@@ -1034,7 +1043,7 @@ void sigchld(int unused) {
 
 void tag(unsigned char x) {
 	if (selmon->sel) {
-		selmon->sel->tag = x;
+		selmon->sel->workspace = &selmon->workspaces[x];
 		focus(NULL);
 		arrange(selmon);
 	}
@@ -1247,8 +1256,8 @@ void updatewmhints(Client *c) {
 }
 
 void view(unsigned char x) {
-	if (x == selmon->tag) return;
-	selmon->tag = x;
+	if (x == selmon->workspace) return;
+	selmon->workspace = x;
 	focus(NULL);
 	arrange(selmon);
 }
@@ -1304,7 +1313,7 @@ int xerrorstart(Display *dpy, XErrorEvent *ee) {
 void zoom(void) {
 	Client *c = selmon->sel;
 
-	if (!selmon->layout || (selmon->sel && selmon->sel->isfloating))
+	if (!WORKSPACE(selmon).layout || (selmon->sel && selmon->sel->isfloating))
 		return;
 	if (c == nexttiled(selmon->clients))
 		if (!c || !(c = nexttiled(c->next)))
@@ -1327,7 +1336,7 @@ void vstack(Monitor *m) {
 	n = tile_count(m);
 	if (n == 1) monocle(m);
 	else if (n > 1) {
-		mw = m->ww * m->mfact;
+		mw = m->ww * WORKSPACE(m).mfact;
 		h = m->wh/(n-1);
 		resize((c = nexttiled(m->clients)), m->wx, m->wy, mw - 2*borderpx, m->wh - 2*borderpx, 0);
 		while((c = nexttiled(c->next)))
@@ -1341,7 +1350,7 @@ void bstackhoriz(Monitor *m) {
 	n = tile_count(m);
 	if (n == 1) monocle(m);
 	else if (n > 1) {
-		mh = m->mfact * m->wh;
+		mh = WORKSPACE(m).mfact * m->wh;
 		resize((c = nexttiled(m->clients)), m->wx, m->wy, m->ww - 2*borderpx, mh - 2*borderpx, 0);
 		w = m->ww/(n-1);
 		while ((c = nexttiled(c->next)))
@@ -1357,7 +1366,7 @@ void centeredmaster(Monitor *m) {
 	else if (n < 3) monocle(m);
 	else {
 		// setup master (center) window
-		mw = m->ww*m->mfact - 2*borderpx;
+		mw = m->ww*WORKSPACE(m).mfact - 2*borderpx;
 		c = nexttiled(m->clients);
 		resize(c, (m->ww - mw)/2, m->wy, mw, m->wh - 2*borderpx, 0);
 
@@ -1438,8 +1447,8 @@ void dispatchcmd(void) {
 		case 'v': cycleview(+1); break;
 		case 'V': cycleview(-1); break;
 
-		case 's': cycletag(+1); break;
-		case 'S': cycletag(-1); break;
+		case 's': cycleworkspace(+1); break;
+		case 'S': cycleworkspace(-1); break;
 
 		case 'm': focusmon(+1); break;
 		case 'M': focusmon(-1); break;
