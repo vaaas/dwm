@@ -1350,7 +1350,7 @@ void bstackhoriz(Monitor *m) {
 }
 
 void centeredmaster(Monitor *m) {
-	unsigned int i, n, mw, left_y, right_y, left_h, right_h;
+	unsigned int n, mw, left_y, right_y, left_h, right_h;
 	Client *c;
 	n = tile_count(m);
 	if (n == 2) tile(m);
@@ -1364,16 +1364,17 @@ void centeredmaster(Monitor *m) {
 		// and now side windows
 		right_y = 0;
 		left_y = 0;
-		right_h = m->wh/((n-1)/2) - 2*borderpx;
-		left_h = m->wh/((n-1)/2 + (n-1)%2) - 2*borderpx;
-		for (i = 1, c = nexttiled(c->next); c; c = nexttiled(c->next), i = !i) {
-			if (i) {
-				resize(c, m->wx, m->wy + left_y, (m->ww - mw)/2 - 2*borderpx, left_h, 0);
-				left_y += left_h;
-			}
-			else {
+		right_h = m->wh/((n-1)/2 + (n-1)%2) - 2*borderpx;
+		left_h = m->wh/((n-1)/2) - 2*borderpx;
+		n = ((n-1)/2 + (n-1)%2);
+		for (c = nexttiled(c->next); c; c = nexttiled(c->next)) {
+			if (n) {
 				resize(c, m->wx + (m->ww + mw)/2 + 2*borderpx, m->wy + right_y, (m->ww - mw)/2 - 2*borderpx, right_h, 0);
-				right_y += right_h;
+				right_y += right_h + 2*borderpx;
+				n--;
+			} else {
+				resize(c, m->wx, m->wy + left_y, (m->ww - mw)/2 - 2*borderpx, left_h, 0);
+				left_y += left_h + 2*borderpx;
 			}
 		}
 	}
