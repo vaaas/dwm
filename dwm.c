@@ -27,7 +27,6 @@
 #define LASTS(X) (X[strlen(X)-1])
 #define LASTA(X) (X[sizeof X / sizeof X[0] - 1])
 #define FOREACH(X, XS) for (X = XS; X; X = X->next)
-#define FOREACHTILE(C, M) for (C = nexttiled(M->clients); C; C = nexttiled(C->next))
 #define FIND(X, COND) while(X) { if (COND) break; else X = X->next; }
 #define dwmfifo "/tmp/dwm.fifo"
 
@@ -84,11 +83,11 @@ struct Client {
 	int oldx, oldy, oldw, oldh;
 	int basew, baseh, incw, inch, maxw, maxh, minw, minh;
 	Workspace *workspace;
-	bool isfixed, isfloating, neverfocus, oldstate, isfullscreen;
 	Client *next;
 	Client *snext;
 	Monitor *mon;
 	Window win;
+	bool isfixed, isfloating, neverfocus, oldstate, isfullscreen;
 };
 
 struct Monitor {
@@ -98,7 +97,6 @@ struct Monitor {
 	Client *sel;
 	Client *stack;
 	Monitor *next;
-	Workspace workspaces[16];
 	unsigned char workspace;
 };
 
@@ -187,7 +185,7 @@ static void bstackhoriz(Monitor *m);
 static Bool evpredicate();
 
 static int screen;
-static int sw, sh;			/* X display screen geometry width, height */
+static int sw, sh; /* X display screen geometry width, height */
 static int (*xerrorxlib)(Display *, XErrorEvent *);
 static void (*handler[LASTEvent]) (XEvent *) = {
 	[ClientMessage] = clientmessage,
@@ -208,7 +206,6 @@ static Window root, wmcheckwin;
 
 Layout layouts[] = { centeredmaster, tile, monocle, };
 unsigned char borderpx = 10;
-unsigned char workspaces = 4;
 unsigned char bh = 0;
 unsigned long col_sel = 0x0000FF;
 unsigned long col_norm = 0x000000;
@@ -220,10 +217,10 @@ float clamp(float x, float l, float h) {
 }
 
 unsigned int tile_count(Monitor *m) {
-	 unsigned char n = 0;
-	 Client *c;
-	 FOREACHTILE(c, m) n++;
-	 return n;
+	unsigned char n = 0;
+	Client *c;
+	for (c = nexttiled(m->clients); c; c = nexttiled(c->next)) n++;
+	return n;
 }
 
 int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact) {
@@ -459,7 +456,7 @@ Monitor *createmon(void) {
 	Monitor *m;
 	m = ecalloc(1, sizeof(Monitor));
 	m->workspace = 0;
-	for (unsigned char i = 0; i < workspaces; i++) {
+	for (unsigned char i = 0; i < 16; i++) {
 		m->workspaces[i].mfact = mfact;
 		m->workspaces[i].layout = layouts[0];
 	}
@@ -483,13 +480,13 @@ void cyclelayout(char x) {
 }
 
 void cycleview(char x) {
-	if (x > 0) view(selmon->workspace == workspaces ? 0 : selmon->workspace + 1);
-	else view(selmon->workspace == 0 ? workspaces - 1 : selmon->workspace - 1);
+	if (x > 0) view(selmon->workspace == 15 ? 0 : selmon->workspace + 1);
+	else view(selmon->workspace == 0 ? 15 : selmon->workspace - 1);
 }
 
 void cycleworkspace(char x) {
-	if (x > 0) tag(selmon->workspace == workspaces ? 0 : selmon->workspace + 1);
-	else tag(selmon->workspace == 0 ? workspaces - 1 : selmon->workspace - 1);
+	if (x > 0) tag(selmon->workspace == 15 ? 0 : selmon->workspace + 1);
+	else tag(selmon->workspace == 0 ? 15 : selmon->workspace - 1);
 }
 
 void destroynotify(XEvent *e) {
@@ -1324,7 +1321,7 @@ void zoom(void) {
 // layouts
 void monocle(Monitor *m) {
 	Client *c;
-	FOREACHTILE(c, m)
+	for (c = nexttiled(m->clients); c; c = nexttiled(m->clients))
 		resize(c, m->wx, m->wy, m->ww - borderpx*2, m->wh - borderpx*2, 0);
 }
 
@@ -1396,7 +1393,6 @@ void load_xresources(Display *dpy) {
 	if (!resm) return;
 	db = XrmGetStringDatabase(resm);
 	resource_load(db, "borderpx", INTEGER, &borderpx);
-	resource_load(db, "workspaces", INTEGER, &workspaces);
 	resource_load(db, "bh", INTEGER, &bh);
 	resource_load(db, "col_sel", HEX, &col_sel);
 	resource_load(db, "col_norm", HEX, &col_norm);
