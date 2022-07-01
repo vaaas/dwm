@@ -97,6 +97,7 @@ struct Monitor {
 	Client *sel;
 	Client *stack;
 	Monitor *next;
+	Workspace workspaces[16];
 	unsigned char workspace;
 };
 
