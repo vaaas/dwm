@@ -16,6 +16,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#define WORKSPACES 4
 #define MAX(A, B) ((A) > (B) ? (A) : (B))
 #define MIN(A, B) ((A) < (B) ? (A) : (B))
 #define INTERSECT(x,y,w,h,m) (MAX(0, MIN((x)+(w),(m)->wx+(m)->ww) - MAX((x),(m)->wx)) * MAX(0, MIN((y)+(h),(m)->wy+(m)->wh) - MAX((y),(m)->wy)))
@@ -97,7 +98,7 @@ struct Monitor {
 	Client *sel;
 	Client *stack;
 	Monitor *next;
-	Workspace workspaces[16];
+	Workspace workspaces[WORKSPACES];
 	unsigned char workspace;
 };
 
@@ -457,7 +458,7 @@ Monitor *createmon(void) {
 	Monitor *m;
 	m = ecalloc(1, sizeof(Monitor));
 	m->workspace = 0;
-	for (unsigned char i = 0; i < 16; i++) {
+	for (unsigned char i = 0; i < WORKSPACES; i++) {
 		m->workspaces[i].mfact = mfact;
 		m->workspaces[i].layout = layouts[0];
 	}
@@ -481,13 +482,13 @@ void cyclelayout(char x) {
 }
 
 void cycleview(char x) {
-	if (x > 0) view(selmon->workspace == 15 ? 0 : selmon->workspace + 1);
-	else view(selmon->workspace == 0 ? 15 : selmon->workspace - 1);
+	if (x > 0) view(selmon->workspace == WORKSPACES-1 ? 0 : selmon->workspace + 1);
+	else view(selmon->workspace == 0 ? WORKSPACES-1 : selmon->workspace - 1);
 }
 
 void cycleworkspace(char x) {
-	if (x > 0) tag(selmon->workspace == 15 ? 0 : selmon->workspace + 1);
-	else tag(selmon->workspace == 0 ? 15 : selmon->workspace - 1);
+	if (x > 0) tag(selmon->workspace == WORKSPACES-1 ? 0 : selmon->workspace + 1);
+	else tag(selmon->workspace == 0 ? WORKSPACES-1 : selmon->workspace - 1);
 }
 
 void destroynotify(XEvent *e) {
@@ -1322,7 +1323,7 @@ void zoom(void) {
 // layouts
 void monocle(Monitor *m) {
 	Client *c;
-	for (c = nexttiled(m->clients); c; c = nexttiled(m->clients))
+	for (c = nexttiled(m->clients); c; c = nexttiled(c->next))
 		resize(c, m->wx, m->wy, m->ww - borderpx*2, m->wh - borderpx*2, 0);
 }
 
