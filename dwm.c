@@ -1066,8 +1066,7 @@ void togglefloating(void) {
 }
 
 void unfocus(Client *c, int setfocus) {
-	if (!c)
-		return;
+	if (!c) return;
 	XSetWindowBorder(dpy, c->win, col_norm);
 	if (setfocus) {
 		XSetInputFocus(dpy, root, RevertToPointerRoot, CurrentTime);
